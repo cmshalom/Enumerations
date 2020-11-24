@@ -1,6 +1,7 @@
 from partition import *
 
 def choose(n,k):
+    ''' Computes \choose {n} {k}'''
     k = min(k,n-k)
     result = 1
     for i in range(k):
@@ -18,7 +19,7 @@ def numberOfRootedTreesUpToN(n):
 
 def numberOfRootedTrees(n, results):
     '''
-    Computes the number of rooted trees of n vertices according the Wilfian reccurence relation
+    Computes the number of rooted trees of n vertices according the Wilfian recurrence relation
     :param results: Upon entry, results[i] contains the number of unlabeled rooted trees of i vertices
            for every i < n. Upon exit results[n] too, contains the correct value.
     '''
@@ -37,6 +38,9 @@ def numberOfRootedTrees(n, results):
 
 
 def numberOfRootedTreesOfPartition(partition, numberOfTrees):
+    ''' Returns the number of rooted forests with tree sizes equal to the numbers of the given partition
+    :param numberOfTrees: Entry i contains the number of unlabeled unordered rooted trees on i vertices
+    '''
     maxTreeSize = len(numberOfTrees) - 1
     if (partition.len() == 0):
         return 1

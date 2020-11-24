@@ -1,6 +1,13 @@
 import copy
 
 class Partition:
+    '''
+    A partition consists of two lists:
+    - numbers: A list of numbers in non-increasing order, e.g. [9, 9, 7, 7, 7, 2, 1]
+    - bases: A list of bases than contains the above list grouped by identical numbers.
+          Every element in the list of two elements: A number in the list "numbers" and its multiplicity.
+          The list "bases" corresponding to the above example is [[9,2],[7,3],[2,1],[1,1]
+    '''
 
     def __init__(self,number, partition=None):
         if partition is None:
@@ -36,9 +43,12 @@ class Partition:
                 result += " + "
             result += str(b[0]) + "^" + str(b[1])
         return result
-
 def _partitions(n, max):
-    ### Generates all the partitions of n into numbers less than or equal max
+    ''' Generates all the partitions of n into numbers less than or equal max
+    :param n: The number to be partitioned
+    :param max: An upper bound to the the individual elements of the partition
+    :return:
+    '''
     if n == 0:
         yield Partition(0)
     if max > n:
@@ -48,6 +58,7 @@ def _partitions(n, max):
             yield Partition(i, partition)
 
 def partitions(n):
+    ''' Generates all the partitions of n '''
     return _partitions(n, n)
 
 
