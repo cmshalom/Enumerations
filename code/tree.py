@@ -1,17 +1,12 @@
-def _partitions(n, max):
-    ### Generates all the partitions of n into numbers less than or equal max
-    if n == 0:
-        yield []
-    if max > n:
-        max = n
-    for i in range(max, 0, -1):
-        for set in _partitions(n - i, i):
-            yield [i] + set
+from partition import *
 
-
-def partitions(n):
-    return _partitions(n, n)
-
+def choose(n,k):
+    k = min(k,n-k)
+    result = 1
+    for i in range(k):
+        result *= (n-i)
+        result //= i+1
+    return result
 
 def numberOfRootedTreesUpToN(n):
     # Time complexity = \sum i log i = O(n^2 log n)
@@ -43,24 +38,16 @@ def numberOfRootedTrees(n, results):
 
 def numberOfRootedTreesOfPartition(partition, numberOfTrees):
     maxTreeSize = len(numberOfTrees) - 1
-    if (len(partition) == 0):
+    if (partition.len() == 0):
         return 1
-    if partition[0] > maxTreeSize:
-        raise AssertionError("Number of trees with", partition[0], "vertices unknown")
-    # We assume that a partition is given as a non-increasing list of numbers
-    # For every maximal subsequence of k identical elements i we choose a multiset of k elements from the set of T(i)
-    # rootedTrees of i vertices.
-    # This number is \choose {T(i)-1+k} {k}
-    # We compute it iteratively, by multiplying by T(i)/1, (T(i)+1)/2, and so on until (T(i)+k-1)/k
-    if len(partition) == 0:
-        return 1
+    if partition.max() > maxTreeSize:
+        raise AssertionError("Number of trees with", partition.max(), "vertices unknown")
+    # For every element p with multiplicty k we choose a multiset of k elements from the set of T(p)
+    # rootedTrees of p vertices.
+    # This number is choose (T(p)-1+k, k)
     result = 1
-    previousI = partition[0] + 1;
-    for i in partition:
-        rank = 1 if i < previousI else rank + 1
-        result *= (numberOfTrees[i] + rank - 1)
-        result //= rank
-        previousI = i
+    for b in partition.bases:
+        result *= choose(numberOfTrees[b[0]] - 1 + b[1] ,b[1])
     return result
 
 
@@ -72,9 +59,6 @@ def numberOfRootedTreesUpToNViaPartitions(n):
 
 
 if __name__ == "__main__":
-    print ('Partitions of', 10)
-    for set in partitions(10):
-        print (set)
     print()
     print ("Numbers of unlabeled rooted trees computed using Wilf's formula")
     print(numberOfRootedTreesUpToN(20))
