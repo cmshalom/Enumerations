@@ -4,7 +4,12 @@ from util import *
 
 class Tree:
     def __init__(self, children=None):
-        self.children = [] if children is None else children
+        if children is None:
+            self.children = []
+            self.leaves = 1
+        else:
+            self.children = children
+            self.leaves = sum([child.leaves for child in children])
         self.vertices = 1 + sum([child.vertices for child in self.children])
 
     def __str__(self):
@@ -15,6 +20,16 @@ class Tree:
                 result += " " + str(child.vertices)
         return result
 
+    def _setOffset(self, offset):
+        '''
+        Recursively sets all the offsets (i.e. index of leftmost leaf in subtree) for every vertex of the tree
+        :param offset: the index of the leftmost leaf of this tree
+        '''
+        self.offset = offset
+        for child in self.children:
+            child._setOffset(offset)
+            offset+=child.leaves
+
     @staticmethod
     def _levelString(trees):
         '''
@@ -24,13 +39,16 @@ class Tree:
         '''
         str = ""
         nextLevel = []
+        lastOffset = 0
         for tree in trees:
-            nextLevel += tree.children
+            str += " " * (tree.offset - lastOffset)
             str += "O"
-            str += " " * (tree.vertices - 1)
+            lastOffset = tree.offset
+            nextLevel += tree.children
         return (str,nextLevel)
 
     def __repr__(self):
+        self._setOffset(0)  # Recursively sets all the offsets of all subtrees
         level = [self]
         lines = []
         while (len(level) != 0):
@@ -148,7 +166,7 @@ if __name__ == "__main__":
             print ("Tree ", i, "=", str(tree(n,i)))
 
     print ("REPRESENTATIONS of TREES")
-    for n in range(1,5):
+    for n in range(1,6):
         print ("Trees on %d vertices" % n)
         for i in range(numberOfTrees(n)):
             print ("Tree ", i, ":")
