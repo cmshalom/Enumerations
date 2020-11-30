@@ -114,15 +114,10 @@ def forest(n,i):
 
     if n==0:
         return []
-    m = bisect_left(fnm_leq[n], i+1)   #find the smallest index m such that f<=(m) > i
+    m = bisect_left(fnm_leq[n], i+1)   #find the smallest index m such that f<=(n,m) > i
     i -= fnm_leq[n][m - 1]             #this is the index of the required tree in F(n,m)
-    return forestnm(n,m,i)
 
-def forestnm(n, m, i):
-    '''
-    :return: The i-th forest F on n vertices with m(F)=m
-    '''
-    mu = bisect_left(fnmmu_leq[n][m], i+1)
+    mu = bisect_left(fnmmu_leq[n][m], i+1) #find the smallest index mu such that f<=(n,m,mu) > i
     i -= fnmmu_leq[n][m][mu - 1]       #this is the index of the required tree in F(n,m, mu)
     return forestnmmu(n, m, mu, i)
 
