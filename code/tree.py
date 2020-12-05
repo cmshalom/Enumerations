@@ -2,6 +2,9 @@ from bisect import *
 from combin import *
 from util import *
 
+import networkx as nx
+import matplotlib.pyplot as plt
+
 class Tree:
     def __init__(self, children=None):
         if children is None:
@@ -12,7 +15,24 @@ class Tree:
             self.leaves = sum([child.leaves for child in children])
         self.vertices = 1 + sum([child.vertices for child in self.children])
 
+    def addTree(self, tree):
+        '''
+        Makes the root of tree a child of the root of the current tree.
+        The addition will preserve the order of the subtrees which is from the largest tree to the smallest.
+        '''
+        # TODO Can use binary search to improve
+        self.vertices += tree.vertices
+        for i in range(len(self.children)):
+            if tree.vertices >= self.children[i].vertices:
+                self.children.insert(i,tree)
+                return
+        self.children.append(tree)
+
     def __str__(self):
+        '''
+        :return: a string with the number of vertices of the tree and every subtree
+        (not recursive)
+        '''
         result = str(self.vertices)
         if len(self.children) > 0:
             result += "->"
@@ -59,28 +79,136 @@ class Tree:
             str += line + "\n"
         return str
 
-def _computeNumberOfTreesWilf(N):
+    def plot(self):
+        g = nx.Graph()
+        self._plot(g)
+        nx.draw(g, with_labels=True, font_weight='bold')
+
+    def _plot(self, g, parent=None):
+        root = g.number_of_nodes();
+        g.add_node(root)
+        if parent is not None:
+            g.add_edge(root,parent)
+        for child in self.children:
+            child._plot(g, root)
+
+    def show(self):
+        '''
+        Exhibits self depending on the global boolean variables textOutput, graphicsToScreen and GraphicsToFile
+        '''
+        if textOutput:
+            print("Tree", end="")
+            if ("rank" in self.__dict__):
+                print (" #", self.rank, end="")
+            print (" (%d vertices) :" % self.vertices)
+            print(self.__repr__())
+        if graphicsToScreen or graphicsToFile:
+            plt.clf()
+            self.plot()
+            if graphicsToFile:
+                assert "rank" in self.__dict__
+                plt.savefig("Tree-%d-%d.png" % (self.vertices, self.rank))
+            if graphicsToScreen:
+                plt.show()
+
+###########################################################################################
+#         GENERATORS
+###########################################################################################
+
+def rootedTrees(n):
+    if n == 1:
+        yield Tree()
+        return
+    for f in forests(n-1):
+        yield Tree(f)
+
+def forests(n):
+    return forestsnm_leq(n,n)
+
+def forestsnm_leq(n,m):
+    if n==0:
+        yield []
+    elif m==0:
+        return
+    else:
+        for forest in forestsnmmu(n, 1, n):
+            yield forest
+        for mm in range (2,m+1):
+            for mu in range (1, n // mm + 1):
+                for forest in forestsnmmu(n,mm,mu):
+                    yield forest
+    return
+
+def forestsnmmu(n,m,mu):
+    def f():
+        return rootedTrees(m)
+
+    for set in multisets(f, mu):
+        for forest in forestsnm_leq(n-m*mu, min(n-m*mu,m-1)):
+            yield set + forest
+
+
+def freeTrees(n):
+    def f():
+        return rootedTrees(n // 2)
+    # Generate monocentroidal trees
+    for forest in forestsnm_leq(n-1, (n-1) // 2):
+        yield Tree(forest)
+
+    # Generate bicentroidal trees
+    if n % 2 == 0:
+        for pair in multisets(f,2):
+            pair[0].addTree(pair[1])
+            yield pair[0]
+
+def demoRootedTreesEnumeration(L,H):
+    print ()
+    print ("ROOTED TREES ENUMERATION")
+    for n in range(L,H+1):
+        print ("Rooted Trees on %d vertices" % n)
+        rank = 0
+        for t in rootedTrees(n):
+            t.rank = rank
+            rank = rank+1
+            t.show()
+
+def demoFreeTreesEnumeration(L,H):
+    print ()
+    print ("FREE TREES ENUMERATION")
+    for n in range(L,H+1):
+        print ("Free Trees on %d vertices" % n)
+        rank = 0
+        for t in freeTrees(n):
+            t.rank = rank
+            rank = rank+1
+            t.show()
+
+###########################################################################################
+#         RECURRENCES
+###########################################################################################
+
+def _computeNumberOfRootedTreesWilf(N):
     # Time complexity = \sum i log i = O(n^2 log n)
-    if "tn" not in globals():
-        global tn
-        tn = [None, 1]   #t(1)=1, t(0) undefined
-    for n in range(len(tn), N + 1):
+    if "wtn" not in globals():
+        global wtn
+        wtn = [None, 1]   #t(1)=1, t(0) undefined
+    for n in range(len(wtn), N + 1):
         t = 0
         # Time complexity n + n/2 + n/3 + n/4..  = O(n log n)
         for j in range(1, n):
             # The running time of this iteration is O(n/j)
-            t += sum ([d * tn[d] * tn[n - d * j] for d in range(1, (n - 1) // j + 1)])
-        tn.append (t // (n - 1))
+            t += sum ([d * wtn[d] * wtn[n - d * j] for d in range(1, (n - 1) // j + 1)])
+        wtn.append (t // (n - 1))
 
-def numberOTreesWilf(n):
+def numberOfRootedTreesWilf(n):
     '''
     :return: the number of rooted trees of n vertices according the Wilfian recurrence relation
     Upon exit the class variable tn.contains the number of trees on i vertices for every i <= n
     Existing values in tn upn entry, if any, are considered as correct
     '''
-    if "tn" not in globals() or len(tn) <= n:
-        _computeNumberOfTreesWilf(n)
-    return tn[n]
+    if "wtn" not in globals() or len(wtn) <= n:
+        _computeNumberOfRootedTreesWilf(n)
+    return wtn[n]
 
 def _computeNumberOfForests(N):
     # To be consistent with the paper, we work with one based lists.
@@ -114,15 +242,30 @@ def numberOfForests(n):
         _computeNumberOfForests(n)
     return fn[n]
 
-def numberOfTrees(n):
+def numberOfRootedTrees(n):
     assert n > 0, "n = %d should be positive" % n
     return numberOfForests(n-1)
 
-def tree(n,i):
+def demoRecurrences(N):
+    print ()
+    print ("Numbers of unlabeled rooted trees computed using Wilf's formula")
+    numberOfRootedTreesWilf(N)
+    print("wtn=", wtn)
+
+    print ()
+    numberOfRootedTrees(N)
+    print ("Numbers of unlabeled rooted forests computed from the breakdown")
+    print("fn=", fn)
+
+###########################################################################################
+#         UNRANKING
+###########################################################################################
+
+def rootedTree(n,i):
     assert n > 0, "n=%d should be positive" % n
     assert i >= 0, "i=%d should be non-negative" % i
-    assert i < numberOfTrees(n), "i=%d should be at most the number of trees %d on %d vertices" % (i,numberOfTrees(n),n)
-    return Tree(None) if n == 1 else Tree(forest(n-1,i))
+    assert i < numberOfRootedTrees(n), "i=%d should be at most the number of trees %d on %d vertices" % (i,numberOfRootedTrees(n),n)
+    return Tree() if n == 1 else Tree(forest(n-1,i))
 
 def forest(n,i):
     assert n >= 0, "n=%d should be non-negative" % n
@@ -145,29 +288,66 @@ def forestnmmu(n,m,mu,i):
     '''
     numberOfSmallForests = fnm_leq[n - m * mu] [min(n - m * mu, m - 1)]
     (i1,i2) = divmod (i, numberOfSmallForests)
-    bigChildren = [tree(m, treeIndex) for treeIndex in multiset(tn[m], mu, i1)]
-    smallChildren = forest (n - m  * mu, i2) # the choice of i2 and the oder of the trees guarantees that m(F) <= m-1 for the returned forest F
+    bigChildren = [rootedTree(m, treeIndex) for treeIndex in multiset(fn[m-1], mu, i1)]
+    smallChildren = forest (n - m  * mu, i2) # the choice of i2 and the order of the trees guarantees that m(F) <= m-1 for the returned forest F
     return bigChildren + smallChildren
 
-if __name__ == "__main__":
-    print ("Numbers of unlabeled rooted trees computed using Wilf's formula")
-    print(numberOTreesWilf(20))
+def numberOfFreeTrees(n):
+    assert n > 0, "n = %d should be positive" % n
+    return _numberOfMonocentroidalTrees(n) + _numberOfBicentroidalTrees(n)
 
+def _numberOfBicentroidalTrees(n):
+    return cc(fn[n // 2 - 1], 2) if n % 2 == 0 else 0
+
+def _numberOfMonocentroidalTrees(n):
+    return fnm_leq[n-1] [(n-1) // 2]
+
+def freeTree(n,i):
+    if n % 2 == 0 and i >= _numberOfMonocentroidalTrees(n):
+        i -= _numberOfMonocentroidalTrees(n)
+        pair = [ rootedTree(n//2, treeIndex) for treeIndex in multiset(fn[n // 2 - 1],2,i) ]
+        pair[0].addTree(pair[1])
+        return pair[0]
+    else:
+        return rootedTree(n,i)  # The order of the trees and the value of i guarantee that there will be no big subtrees
+
+def demoRootedTreesUnranking(L,H):
     print ()
-    print ("Numbers of unlabeled rooted forest computed from the breakdown")
-    print(numberOfTrees(20))
-    print("tn=", tn)
-    print("fn=", fn)
-
-    print ("COMPACT (and ambiguous) REPRESENTATIONS of TREES")
-    for n in range(1,7):
-        print ("Trees on %d vertices" % n)
-        for i in range(numberOfTrees(n)):
-            print ("Tree ", i, "=", str(tree(n,i)))
-
-    print ("REPRESENTATIONS of TREES")
-    for n in range(1,6):
-        print ("Trees on %d vertices" % n)
-        for i in range(numberOfTrees(n)):
+    print ("ROOTED TREES UNRANKING")
+    numberOfRootedTrees(H)
+    for n in range(L,H+1):
+        print ("Rooted Trees on %d vertices" % n)
+        for i in range(numberOfRootedTrees(n)):
             print ("Tree ", i, ":")
-            print (repr(tree(n,i)))
+            t = rootedTree(n,i)
+            t.rank = i
+            t.show()
+
+def demoFreeTreesUnranking(L, H):
+    print ()
+    print ("FREE TREES")
+    numberOfRootedTrees(H)
+    for n in range(L,H+1):
+        print ("Free Trees on %d vertices" % n)
+        for i in range(numberOfFreeTrees(n)):
+            t = freeTree(n,i)
+            t.rank = i
+            t.show()
+
+#######################################################################################
+#                   MAIN
+#######################################################################################
+def inputBoolean(str):
+    return input(str + "(Y/N)").upper().startswith("Y")
+
+if __name__ == "__main__":
+    Low = int(input("Smallest Tree Size ?"))
+    High = int(input("Largest Tree Size ?"))
+    textOutput = inputBoolean("TextOutput ?")
+    graphicsToScreen = inputBoolean("Graphics to Screen")
+    graphicsToFile = inputBoolean("Graphics to File ?")
+#    demoReccurrences(20)
+#    demoRootedTreesUnranking(5,5)
+#    demoFreeTreesUnranking(1,5)
+#    demoRootedTreesEnumeration(5,5)
+    demoFreeTreesEnumeration(Low,High)
