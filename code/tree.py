@@ -158,8 +158,7 @@ def freeTrees(n):
     # Generate bicentroidal trees
     if n % 2 == 0:
         for pair in multisets(f,2):
-            pair[0].addTree(pair[1])
-            yield pair[0]
+            yield Tree([pair[0]]+pair[1].children)
 
 def demoRootedTreesEnumeration(L,H):
     print ()
@@ -343,7 +342,7 @@ def inputBoolean(str):
 if __name__ == "__main__":
     Low = int(input("Smallest Tree Size ?"))
     High = int(input("Largest Tree Size ?"))
-    textOutput = inputBoolean("TextOutput ?")
+    textOutput = inputBoolean("Text Output ?")
     graphicsToScreen = inputBoolean("Graphics to Screen")
     graphicsToFile = inputBoolean("Graphics to File ?")
 #    demoReccurrences(20)
