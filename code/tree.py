@@ -6,13 +6,33 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 class Tree:
-    def __init__(self, children=None):
+    class Color:
+        GRAY = 0
+        BLUE = 1
+        RED = 2
+        YELLOW = 3
+        def __init__(self, name, minVertexWeight, maxVertexWeight, minTreeWeight, childrenColor):
+            self.name = name
+            self.minVertexWeight = minVertexWeight
+            self.maxVertexWeight = maxVertexWeight
+            self.minTreeWeight = minTreeWeight
+            self.childrenColor = childrenColor
+
+    colors = [Color("gray", 1, 1, 1, Color.GRAY),
+              Color("blue", 1, sys.maxsize, 1, Color.BLUE),
+              Color("red", 0, sys.maxsize, 1, Color.YELLOW),
+              Color("yellow", 1, 1, 2, Color.RED)
+              ]
+
+    def __init__(self, children=None, weight=1, color=Color.GRAY):
         if children is None:
             self.children = []
             self.leaves = 1
         else:
             self.children = children
             self.leaves = sum([child.leaves for child in children])
+        self.weight = weight
+        self.color = color
         self.vertices = 1 + sum([child.vertices for child in self.children])
 
     def addTree(self, tree):
@@ -27,6 +47,12 @@ class Tree:
                 self.children.insert(i,tree)
                 return
         self.children.append(tree)
+
+    def nodesDFS(self):
+        yield self
+        for child in self.children:
+            for node in nodesDFS(child):
+                yield node
 
     def __str__(self):
         '''
@@ -81,16 +107,25 @@ class Tree:
 
     def plot(self):
         g = nx.Graph()
-        self._plot(g)
-        nx.draw(g, with_labels=True, font_weight='bold')
+        vertexColors = []
+        vertexLabels = {}
+        self._plot(g, vertexColors, vertexLabels)
+        nx.draw(g, with_labels=True, labels=vertexLabels, font_weight='bold', node_color=vertexColors)
 
-    def _plot(self, g, parent=None):
+    def _plot(self, g, colors, labels, parent=None):
+        '''
+        :param g: A new vertex and an edge to parent (if any) is added to the graph g
+        :param colors: The color of the vertex is added to to this list
+        :param labels:  A label encoding the number and weight of the vertex is added to this dictionnary.
+        '''
         root = g.number_of_nodes();
         g.add_node(root)
+        colors.append(Tree.colors[self.color].name)
+        labels[root] = "%d:%d" % (root, self.weight)
         if parent is not None:
             g.add_edge(root,parent)
         for child in self.children:
-            child._plot(g, root)
+            child._plot(g, colors, labels, root)
 
     def show(self):
         '''
