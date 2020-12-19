@@ -25,14 +25,20 @@ class Tree:
               ]
 
     def __init__(self, children=None, weight=1, color=Color.GRAY):
+        assert weight >= 0, "weight = %d should be non-negative" % weight
+        self.weight = weight
+
+        if type(color) == int:
+            assert color <= len(Tree.colors), "Color %d exceeds %d" % (color, len(Tree.colors))
+            color = Tree.colors[color]
+        self.color = color
+
         if children is None:
             self.children = []
             self.leaves = 1
         else:
             self.children = children
             self.leaves = sum([child.leaves for child in children])
-        self.weight = weight
-        self.color = color
         self.vertices = 1 + sum([child.vertices for child in self.children])
 
     def addTree(self, tree):
@@ -59,11 +65,13 @@ class Tree:
         :return: a string with the number of vertices of the tree and every subtree
         (not recursive)
         '''
-        result = str(self.vertices)
+        result = str(self.vertices + "w=" + self.weight)
         if len(self.children) > 0:
             result += "->"
             for child in self.children:
                 result += " " + str(child.vertices)
+                if child.weight != 1:
+                    result += "w=" + str(child.weight)
         return result
 
     def _setOffset(self, offset):
@@ -105,8 +113,8 @@ class Tree:
             str += line + "\n"
         return str
 
-    def plot(self):
-        g = nx.Graph()
+    def plot(self, isDirected=False):
+        g = nx.DiGraph() if isDirected else nx.Graph()
         vertexColors = []
         vertexLabels = {}
         self._plot(g, vertexColors, vertexLabels)
@@ -118,16 +126,16 @@ class Tree:
         :param colors: The color of the vertex is added to to this list
         :param labels:  A label encoding the number and weight of the vertex is added to this dictionnary.
         '''
-        root = g.number_of_nodes();
+        root = g.number_of_nodes()
         g.add_node(root)
-        colors.append(Tree.colors[self.color].name)
-        labels[root] = "%d:%d" % (root, self.weight)
+        colors.append(self.color.name)
+        labels[root] = "%d" % (self.weight)
         if parent is not None:
-            g.add_edge(root,parent)
+            g.add_edge(parent,root)
         for child in self.children:
             child._plot(g, colors, labels, root)
 
-    def show(self):
+    def show(self, isDirected=False):
         '''
         Exhibits self depending on the global boolean variables textOutput, graphicsToScreen and GraphicsToFile
         '''
@@ -139,7 +147,7 @@ class Tree:
             print(self.__repr__())
         if graphicsToScreen or graphicsToFile:
             plt.clf()
-            self.plot()
+            self.plot(isDirected=isDirected)
             if graphicsToFile:
                 assert "rank" in self.__dict__
                 plt.savefig("Tree-%d-%d.png" % (self.vertices, self.rank))
@@ -150,72 +158,108 @@ class Tree:
 #         GENERATORS
 ###########################################################################################
 
-def rootedTrees(n):
-    if n == 1:
-        yield Tree()
+def rootedTrees(w, color, maxSubtreeWeight=None):
+    if type(color) == int:
+        color = Tree.colors[color]
+    if maxSubtreeWeight is None or maxSubtreeWeight > w:
+        maxSubtreeWeight = w
+    if w < color.minTreeWeight:
         return
-    for f in forests(n-1):
-        yield Tree(f)
 
-def forests(n):
-    return forestsnm_leq(n,n)
+    maxRootWeight = min(color.maxVertexWeight, w)
+    for rootWeight in range(color.minVertexWeight, maxRootWeight+1):
+        for f in forestsnm_leq(w - rootWeight, maxSubtreeWeight, color.childrenColor):
+            yield Tree(f, color=color, weight=rootWeight)
 
-def forestsnm_leq(n,m):
-    if n==0:
+def forests(w, color):
+    return forestsnm_leq(w, w,color)
+
+def forestsnm_leq(w,m,color):
+    if w==0:
         yield []
-    elif m==0:
         return
-    else:
-        for forest in forestsnmmu(n, 1, n):
-            yield forest
-        for mm in range (2,m+1):
-            for mu in range (1, n // mm + 1):
-                for forest in forestsnmmu(n,mm,mu):
-                    yield forest
+
+    if type(color) == int:
+        color = Tree.colors[color]
+    if m < color.minTreeWeight:
+        return
+
+    for mm in range (color.minTreeWeight,m+1):
+        for mu in range (1, w // mm + 1):
+            for forest in forestsnmmu(w,mm,mu,color):
+                yield forest
     return
 
-def forestsnmmu(n,m,mu):
+def forestsnmmu(w,m,mu,color):
+    assert type(color) == Tree.Color
+
     def f():
-        return rootedTrees(m)
+        return rootedTrees(m,color)
 
     for set in multisets(f, mu):
-        for forest in forestsnm_leq(n-m*mu, min(n-m*mu,m-1)):
+        for forest in forestsnm_leq(w-m*mu, min(w-m*mu,m-1), color):
             yield set + forest
 
 
-def freeTrees(n):
-    def f():
-        return rootedTrees(n // 2)
+def _freeTrees(n, color):
+    if type(color) == int:
+        color = Tree.colors[color]
+
     # Generate monocentroidal trees
-    for forest in forestsnm_leq(n-1, (n-1) // 2):
-        yield Tree(forest)
+    for t in rootedTrees(n,color, maxSubtreeWeight=(n-1)//2):
+            yield t
 
     # Generate bicentroidal trees
     if n % 2 == 0:
-        for pair in multisets(f,2):
-            yield Tree([pair[0]]+pair[1].children)
+        for pair in multisets(lambda : rootedTrees(n//2, color),2):
+            yield Tree([pair[0]]+pair[1].children, color=color, weight=pair[1].weight)
+
+def freeTrees(n):
+    return _freeTrees(n, Tree.Color.GRAY)
+
+def weightedFreeTrees(n):
+    return _freeTrees(n, Tree.Color.BLUE)
+
+def demoEnumeration(L,H, f, formatString=None, isDirected=False):
+    for n in range(L,H+1):
+        if formatString is not None:
+            print (formatString % n)
+        rank = 0
+        for t in f(n):
+            t.rank = rank
+            rank = rank+1
+            t.show(isDirected=isDirected)
+
+def blockTrees(n):
+    # Generate monocentroidal trees
+    for t in rootedTrees(n, Tree.Color.RED, maxSubtreeWeight=(n-1)//2):
+            yield t
+    for t in rootedTrees(n, Tree.Color.YELLOW, maxSubtreeWeight=(n-1)//2):
+            yield t
+
+    if n % 2 == 0:
+        # Generate bicentroidal trees
+        for redTree in rootedTrees(n//2, Tree.Color.RED, maxSubtreeWeight=n // 2 - 1):
+            for yellowTree in rootedTrees(n // 2, Tree.Color.YELLOW):
+                yield Tree([redTree]+yellowTree.children, color=Tree.Color.YELLOW, weight=yellowTree.weight)
+        # Generate trees with tree centroids trees
+        for pair in multisets(lambda : rootedTrees(n//2, Tree.Color.YELLOW),2):
+            yield Tree(pair, color=Tree.Color.RED, weight=0)
 
 def demoRootedTreesEnumeration(L,H):
-    print ()
-    print ("ROOTED TREES ENUMERATION")
-    for n in range(L,H+1):
-        print ("Rooted Trees on %d vertices" % n)
-        rank = 0
-        for t in rootedTrees(n):
-            t.rank = rank
-            rank = rank+1
-            t.show()
+    demoEnumeration(L,H, lambda n : rootedTrees(n, Tree.Color.GRAY), formatString="ROOTED TREES ON %d VERTICES", isDirected=True)
+
+def demoWeightedRootedTreesEnumeration(L,H):
+    demoEnumeration(L,H, lambda n : rootedTrees(n, Tree.Color.BLUE), formatString="ROOTED TREES OF WEIGHT %d", isDirected=True)
 
 def demoFreeTreesEnumeration(L,H):
-    print ()
-    print ("FREE TREES ENUMERATION")
-    for n in range(L,H+1):
-        print ("Free Trees on %d vertices" % n)
-        rank = 0
-        for t in freeTrees(n):
-            t.rank = rank
-            rank = rank+1
-            t.show()
+    demoEnumeration(L,H, freeTrees, formatString="FREE TREES ON %d VERTICES", isDirected=False)
+
+def demoWeightedFreeTreesEnumeration(L,H):
+    demoEnumeration(L,H, weightedFreeTrees, formatString="FREE TREES OF WEIGHT %d", isDirected=False)
+
+def demoBlockTreesEnumeration(L,H):
+    demoEnumeration(L,H, blockTrees, formatString="BLOCK TREES OF GRAPHS ON %d VERTICES", isDirected=False)
 
 ###########################################################################################
 #         RECURRENCES
@@ -345,28 +389,20 @@ def freeTree(n,i):
     else:
         return rootedTree(n,i)  # The order of the trees and the value of i guarantee that there will be no big subtrees
 
-def demoRootedTreesUnranking(L,H):
-    print ()
-    print ("ROOTED TREES UNRANKING")
-    numberOfRootedTrees(H)
+def demoUnranking(L,H, numberFunction, unrankingFuntion, formatString=None, isDirected=False):
     for n in range(L,H+1):
-        print ("Rooted Trees on %d vertices" % n)
-        for i in range(numberOfRootedTrees(n)):
+        print (formatString % n)
+        for i in range(numberFunction(n)):
             print ("Tree ", i, ":")
-            t = rootedTree(n,i)
+            t = unrankingFuntion(n,i)
             t.rank = i
-            t.show()
+            t.show(isDirected=isDirected)
+
+def demoRootedTreesUnranking(L,H):
+    demoUnranking(L,H, numberOfRootedTrees, rootedTree, formatString="ROOTED TREES ON %d VERTICES", isDirected=True)
 
 def demoFreeTreesUnranking(L, H):
-    print ()
-    print ("FREE TREES")
-    numberOfRootedTrees(H)
-    for n in range(L,H+1):
-        print ("Free Trees on %d vertices" % n)
-        for i in range(numberOfFreeTrees(n)):
-            t = freeTree(n,i)
-            t.rank = i
-            t.show()
+    demoUnranking(L,H, numberOfFreeTrees, freeTree, formatString="FREE TREES ON %d VERTICES", isDirected=False)
 
 #######################################################################################
 #                   MAIN
@@ -380,8 +416,11 @@ if __name__ == "__main__":
     textOutput = inputBoolean("Text Output ?")
     graphicsToScreen = inputBoolean("Graphics to Screen")
     graphicsToFile = inputBoolean("Graphics to File ?")
-#    demoReccurrences(20)
-#    demoRootedTreesUnranking(5,5)
-#    demoFreeTreesUnranking(1,5)
-#    demoRootedTreesEnumeration(5,5)
-    demoFreeTreesEnumeration(Low,High)
+#    demoRecurrences(High)
+#    demoRootedTreesUnranking(Low,High)
+#    demoFreeTreesUnranking(Low,High)
+#    demoRootedTreesEnumeration(Low,High)
+#    demoWeightedRootedTreesEnumeration(Low,High)
+#    demoFreeTreesEnumeration(Low,High)
+#    demoWeightedFreeTreesEnumeration(Low,High)
+    demoBlockTreesEnumeration(Low,High)

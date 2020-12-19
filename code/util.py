@@ -12,3 +12,8 @@ def boundedGenerator(g, n):
     '''
     for i in range(n):
         yield next(g)
+
+def concatenateGenerators(generators):
+    for g in generators:
+        for elt in g:
+            yield elt
