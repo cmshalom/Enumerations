@@ -40,6 +40,7 @@ class Tree:
             self.children = children
             self.leaves = sum([child.leaves for child in children])
         self.vertices = 1 + sum([child.vertices for child in self.children])
+        self.totalWeight = self.weight + sum([child.totalWeight for child in self.children])
 
     def addTree(self, tree):
         '''
@@ -59,6 +60,12 @@ class Tree:
         for child in self.children:
             for node in nodesDFS(child):
                 yield node
+
+    def getName(self):
+        name = "Weight:" + str(self.totalWeight)
+        if "rank" in self.__dict__:
+            name += "-" + str(self.rank)
+        return name
 
     def __str__(self):
         '''
@@ -118,7 +125,8 @@ class Tree:
         vertexColors = []
         vertexLabels = {}
         self._plot(g, vertexColors, vertexLabels)
-        nx.draw(g, with_labels=True, labels=vertexLabels, font_weight='bold', node_color=vertexColors)
+        nx.draw_planar(g, with_labels=True, labels=vertexLabels, font_weight='bold', font_size=20,
+                       node_color=vertexColors,node_size=700)
 
     def _plot(self, g, colors, labels, parent=None):
         '''
@@ -139,18 +147,17 @@ class Tree:
         '''
         Exhibits self depending on the global boolean variables textOutput, graphicsToScreen and GraphicsToFile
         '''
+        name = self.getName()
         if textOutput:
-            print("Tree", end="")
-            if ("rank" in self.__dict__):
-                print (" #", self.rank, end="")
-            print (" (%d vertices) :" % self.vertices)
+            print(name)
             print(self.__repr__())
         if graphicsToScreen or graphicsToFile:
             plt.clf()
+            if graphicsToScreen:
+                plt.title(name)
             self.plot(isDirected=isDirected)
             if graphicsToFile:
-                assert "rank" in self.__dict__
-                plt.savefig("Tree-%d-%d.png" % (self.vertices, self.rank))
+                plt.savefig(name)
             if graphicsToScreen:
                 plt.show()
 
@@ -221,6 +228,13 @@ def weightedFreeTrees(n):
     return _freeTrees(n, Tree.Color.BLUE)
 
 def demoEnumeration(L,H, f, formatString=None, isDirected=False):
+    '''
+    :param L: Smallest weight of a tree
+    :param H: Largest weight of a tree
+    :param f: A generator getting an integer argument (the common weights of the trees)
+    :param formatString: A text to print before every weight (has one % sign)
+    :param isDirected: Whether or not to draw the tree as rooted.
+    '''
     for n in range(L,H+1):
         if formatString is not None:
             print (formatString % n)
@@ -343,7 +357,9 @@ def rootedTree(n,i):
     assert n > 0, "n=%d should be positive" % n
     assert i >= 0, "i=%d should be non-negative" % i
     assert i < numberOfRootedTrees(n), "i=%d should be at most the number of trees %d on %d vertices" % (i,numberOfRootedTrees(n),n)
-    return Tree() if n == 1 else Tree(forest(n-1,i))
+    ret = Tree() if n == 1 else Tree(forest(n-1,i))
+    ret.rank = i
+    return ret
 
 def forest(n,i):
     assert n >= 0, "n=%d should be non-negative" % n
@@ -375,9 +391,10 @@ def numberOfFreeTrees(n):
     return _numberOfMonocentroidalTrees(n) + _numberOfBicentroidalTrees(n)
 
 def _numberOfBicentroidalTrees(n):
-    return cc(fn[n // 2 - 1], 2) if n % 2 == 0 else 0
+    return cc(numberOfForests(n // 2 - 1), 2) if n % 2 == 0 else 0
 
 def _numberOfMonocentroidalTrees(n):
+    numberOfForests(n-1)  # Trigger computation of the f-values  // TODO: Make this cleaner & safer
     return fnm_leq[n-1] [(n-1) // 2]
 
 def freeTree(n,i):
@@ -389,13 +406,11 @@ def freeTree(n,i):
     else:
         return rootedTree(n,i)  # The order of the trees and the value of i guarantee that there will be no big subtrees
 
-def demoUnranking(L,H, numberFunction, unrankingFuntion, formatString=None, isDirected=False):
+def demoUnranking(L,H, numberFunction, unrankingFunction, formatString=None, isDirected=False):
     for n in range(L,H+1):
         print (formatString % n)
         for i in range(numberFunction(n)):
-            print ("Tree ", i, ":")
-            t = unrankingFuntion(n,i)
-            t.rank = i
+            t = unrankingFunction(n,i)
             t.show(isDirected=isDirected)
 
 def demoRootedTreesUnranking(L,H):
@@ -422,5 +437,5 @@ if __name__ == "__main__":
 #    demoRootedTreesEnumeration(Low,High)
 #    demoWeightedRootedTreesEnumeration(Low,High)
 #    demoFreeTreesEnumeration(Low,High)
-#    demoWeightedFreeTreesEnumeration(Low,High)
-    demoBlockTreesEnumeration(Low,High)
+    demoWeightedFreeTreesEnumeration(Low,High)
+#    demoBlockTreesEnumeration(Low,High)
