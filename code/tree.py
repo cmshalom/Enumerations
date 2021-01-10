@@ -9,8 +9,8 @@ class Tree:
     class Color:
         GRAY = 0
         BLUE = 1
-        RED = 2
-        YELLOW = 3
+        YELLOW = 2
+        RED = 3
         def __init__(self, name, minVertexWeight, maxVertexWeight, minTreeWeight, childrenColor):
             self.name = name
             self.minVertexWeight = minVertexWeight
@@ -20,8 +20,8 @@ class Tree:
 
     colors = [Color("gray", 1, 1, 1, Color.GRAY),
               Color("blue", 1, sys.maxsize, 1, Color.BLUE),
-              Color("red", 0, sys.maxsize, 1, Color.YELLOW),
-              Color("yellow", 1, 1, 2, Color.RED)
+              Color("yellow", 1, 1, 2, Color.RED),
+              Color("red", 0, sys.maxsize, 1, Color.YELLOW)
               ]
 
     def __init__(self, children=None, weight=1, color=Color.GRAY):
@@ -302,52 +302,78 @@ def numberOfRootedTreesWilf(n):
         _computeNumberOfRootedTreesWilf(n)
     return wtn[n]
 
-def _computeNumberOfForests(N):
+def _computeNumbersForWC(w,c):
+    color = Tree.colors[c]
+    rtwc1 = 0 if w < color.minTreeWeight else sum([fwc[w - r][color.childrenColor] for r in range(color.minVertexWeight, min(color.maxVertexWeight,w) + 1)])
+    fwcm1 = [0]          # 1 dimensional
+    fwcmmu1 = [[0]]      # 2 dimensional
+    fwcmmu_leq1 = [[0]]  # 2 dimensional
+    for m in range(1, w + 1):
+        if m < color.minTreeWeight:
+            temp = [0] * (w // m + 1)
+        else:
+            rtmc = rtwc1 if m == w else rtwc[m][c]  # this dirty trick is needed, since the main arrays are not yet updated
+            temp = [0] + [cc(rtmc, mu) * fwcm_leq[w - m * mu][c][min(w - m * mu, m - 1)] for mu in
+                          range(1, w // m + 1)]
+        fwcmmu1.append(temp)
+        temp = partialSums(temp);
+        fwcmmu_leq1.append(temp)
+        fwcm1.append(temp[-1])
+    return (rtwc1, sum(fwcm1), fwcm1, partialSums(fwcm1), fwcmmu1, fwcmmu_leq1)
+
+def _computeNumberOfForests(W):
     # To be consistent with the paper, we work with one based lists.
     # So, we prepend a dummy zero'th entry to every list
-    if "fn" not in globals():
-        global fn, fnm, fnm_leq, fnmmu, fnmmu_leq
-        fn = [1]             #1 dimensional (n)   f(0)=1,
-        fnm = [[1]]          #2 dimensional (n,m) f(0,0) = 1
-        fnm_leq = [[1]]      #2 dimensional (n,m) f^<=(0,0) = 1
-        fnmmu = [[[1]]]      #3 dimensional (n,m,mu) f(0,0,0)=1
-        fnmmu_leq = [[[1]]]  #3 dimensional (n,m,mu) f^<=(0,0,0)=1
-    for n in range(len(fn),N+1):
-        fnm_row = [0]             #1 dimensional
-        fnmmu_plane = [[0]]       #2 dimensional
-        fnmmu_leq_plane = [[0]]   #2 dimensional
-        for m in range(1,n+1):
-           fnmmu_row = [0] + [cc(fn[m-1], mu) * fnm_leq[n - m*mu][min(n - m * mu,m - 1)] for mu in range(1, n // m + 1)]
-           fnmmu_plane.append(fnmmu_row)
-           fnmmu_leq_plane.append(partialSums(fnmmu_row))
-           fnm_row.append(sum(fnmmu_row))
-        # Append all results for n to the main lists
-        fnmmu.append(fnmmu_plane)
-        fnmmu_leq.append(fnmmu_leq_plane)
-        fnm.append(fnm_row)
-        fnm_leq.append(partialSums(fnm_row))
-        fn.append(fnm_leq[n][n])
+    numberOfColors = len(Tree.colors)
+    if "rtwc" not in globals():
+        global rtwc, fwc, fwcm, fwcm_leq, fwcmmu, fwcmmu_leq
+        rtwc = [[1]*numberOfColors]             #2 dimensional (w,c)   rt(0,c)=0
+        fwc = [[1]*numberOfColors]              #2 dimensional (w,c)   f(0,c)=1,
+        fwcm = [[[1]]*numberOfColors]           #3 dimensional (w,c,m) f(0,c,0) = 1
+        fwcm_leq = [[[1]]*numberOfColors]       #3 dimensional (w,c,m) f^<=(0,c,0) = 1
+        fwcmmu = [[[[1]]]*numberOfColors]       #4 dimensional (w,c,m,mu) f(0,c,0,0)=1
+        fwcmmu_leq = [[[[1]]]*numberOfColors]   #4 dimensional (w,c,m,mu) f^<=(0,c,0,0)=1
+    for w in range(len(fwc),W+1):
+        rtwc.append([])
+        fwc.append([])
+        fwcm.append([])
+        fwcm_leq.append([])
+        fwcmmu.append([])
+        fwcmmu_leq.append([])
+        for c in range(0, numberOfColors):
+            results = _computeNumbersForWC(w,c)
+            rtwc[-1].append(results[0])
+            fwc[-1].append(results[1])
+            fwcm[-1].append(results[2])
+            fwcm_leq[-1].append(results[3])
+            fwcmmu[-1].append(results[4])
+            fwcmmu_leq[-1].append(results[5])
 
-def numberOfForests(n):
-    assert n >= 0, "n=%d should be non-negative" % n
-    if "fn" not in globals() or len(fn) <= n:
-        _computeNumberOfForests(n)
-    return fn[n]
+def numberOfForests(w,c):
+    assert w >= 0, "n=%d should be non-negative" % w
+    assert c >= 0 and c < len(Tree.colors), "color %d out of bounds" % c
+    if "rtwc" not in globals() or len(rtwc) <= w:
+        _computeNumberOfForests(w)
+    return fn[w][c]
 
-def numberOfRootedTrees(n):
-    assert n > 0, "n = %d should be positive" % n
-    return numberOfForests(n-1)
+def numberOfRootedTrees(w,c):
+    assert w > 0, "w = %d should be positive" % w
+    assert c >= 0 and c < len(Tree.colors), "color %d out of bounds" % c
+    if "rtwc" not in globals() or len(rtwc) <= w:
+        _computeNumberOfForests(w)
+    color = Tree.colors[c]
+    return rtwc[w][c]
 
 def demoRecurrences(N):
     print ()
     print ("Numbers of unlabeled rooted trees computed using Wilf's formula")
     numberOfRootedTreesWilf(N)
-    print("wtn=", wtn)
+    print(wtn)
 
     print ()
-    numberOfRootedTrees(N)
-    print ("Numbers of unlabeled rooted forests computed from the breakdown")
-    print("fn=", fn)
+    numberOfRootedTrees(N,Tree.Color.GRAY)
+    print ("Numbers of unlabeled rooted trees computed from the breakdown")
+    print([None] + [numberOfRootedTrees(i,Tree.Color.GRAY) for i in range(1,N+1)])
 
 ###########################################################################################
 #         UNRANKING
@@ -431,11 +457,11 @@ if __name__ == "__main__":
     textOutput = inputBoolean("Text Output ?")
     graphicsToScreen = inputBoolean("Graphics to Screen")
     graphicsToFile = inputBoolean("Graphics to File ?")
-#    demoRecurrences(High)
+    demoRecurrences(High)
 #    demoRootedTreesUnranking(Low,High)
 #    demoFreeTreesUnranking(Low,High)
 #    demoRootedTreesEnumeration(Low,High)
 #    demoWeightedRootedTreesEnumeration(Low,High)
 #    demoFreeTreesEnumeration(Low,High)
-    demoWeightedFreeTreesEnumeration(Low,High)
+#    demoWeightedFreeTreesEnumeration(Low,High)
 #    demoBlockTreesEnumeration(Low,High)
