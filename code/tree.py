@@ -354,7 +354,7 @@ def numberOfForests(w,c):
     assert c >= 0 and c < len(Tree.colors), "color %d out of bounds" % c
     if "rtwc" not in globals() or len(rtwc) <= w:
         _computeNumberOfForests(w)
-    return fn[w][c]
+    return fwc[w][c]
 
 def numberOfRootedTrees(w,c):
     assert w > 0, "w = %d should be positive" % w
@@ -379,37 +379,45 @@ def demoRecurrences(N):
 #         UNRANKING
 ###########################################################################################
 
-def rootedTree(n,i):
-    assert n > 0, "n=%d should be positive" % n
+def rootedTree(w,c,i):
+    assert c >= 0 and c < len(Tree.colors), "color %d out of bounds" % c
+    color = Tree.colors[c]
+    assert w >= color.minTreeWeight, "w=%d should be at least %d" % (w,color.minTreeWeight)
     assert i >= 0, "i=%d should be non-negative" % i
-    assert i < numberOfRootedTrees(n), "i=%d should be at most the number of trees %d on %d vertices" % (i,numberOfRootedTrees(n),n)
-    ret = Tree() if n == 1 else Tree(forest(n-1,i))
+    assert i < numberOfRootedTrees(w,c), "i=%d should be at most the number %d  of trees of weight %d" % (i,numberOfRootedTrees(w,c),w)
+    r = color.minVertexWeight;
+    childColor = color.childrenColor
+    while i > fwc[w-r][childColor]:
+        i -= fwc[w-r][childColor]
+    assert r <= color.maxVertexWeight, "%d exceeded the max vertex weight %d" % (r, color.maxVertexWeight)
+    ret = Tree(None if r == w else forest(w-r, childColor, i),weight=r)
     ret.rank = i
     return ret
 
-def forest(n,i):
-    assert n >= 0, "n=%d should be non-negative" % n
+def forest(w, c, i):
+    assert w >= 0, "n=%d should be non-negative" % w
+    assert c >= 0 and c < len(Tree.colors), "color %d out of bounds" % c
     assert i >= 0, "i=%d should be non-negative" % i
-    if i >= numberOfForests(n):
-        print("i=", i,  "should be less than the number of forests", numberOfForests(n),  "on", n, "vertices")
+    if i >= numberOfForests(w,c):
+        print("i=", i,  "should be less than the number of forests", numberOfForests(w,c),  "of weight", w)
 
-    if n==0:
+    if w==0:
         return []
-    m = bisect_left(fnm_leq[n], i+1)   #find the smallest index m such that f<=(n,m) > i
-    i -= fnm_leq[n][m - 1]             #this is the index of the required tree in F(n,m)
+    m = bisect_left(fwcm_leq[w][c], i+1)   #find the smallest index m such that f<=(w,c,m) > i
+    i -= fwcm_leq[w][c][m - 1]             #this is the index of the required tree in F(w,c,m)
 
-    mu = bisect_left(fnmmu_leq[n][m], i+1) #find the smallest index mu such that f<=(n,m,mu) > i
-    i -= fnmmu_leq[n][m][mu - 1]       #this is the index of the required tree in F(n,m, mu)
-    return forestnmmu(n, m, mu, i)
+    mu = bisect_left(fwcmmu_leq[w][c][m], i+1) #find the smallest index mu such that f<=(w,m,mu) > i
+    i -= fwcmmu_leq[w][c][m][mu - 1]           #this is the index of the required tree in F(n,m, mu)
+    return forestwcmmu(w, c, m, mu, i)
 
-def forestnmmu(n,m,mu,i):
+def forestwcmmu(w,c, m, mu,i):
     '''
-    :return: The i-th forest F on n vertices with m(F)=m and mu(F)=mu
+    :return: The i-th forest of weight w, root colored c and m(F)=m and mu(F)=mu
     '''
-    numberOfSmallForests = fnm_leq[n - m * mu] [min(n - m * mu, m - 1)]
+    numberOfSmallForests = fwcm_leq[w - m * mu][c][min(w - m * mu, m - 1)]
     (i1,i2) = divmod (i, numberOfSmallForests)
-    bigChildren = [rootedTree(m, treeIndex) for treeIndex in multiset(fn[m-1], mu, i1)]
-    smallChildren = forest (n - m  * mu, i2) # the choice of i2 and the order of the trees guarantees that m(F) <= m-1 for the returned forest F
+    bigChildren = [rootedTree(m, c, treeIndex) for treeIndex in multiset(rtwc[m][c], mu, i1)]
+    smallChildren = forest (w - m  * mu, c, i2) # the choice of i2 and the order of the trees guarantees that m(F) <= m-1 for the returned forest F
     return bigChildren + smallChildren
 
 def numberOfFreeTrees(n):
@@ -432,18 +440,18 @@ def freeTree(n,i):
     else:
         return rootedTree(n,i)  # The order of the trees and the value of i guarantee that there will be no big subtrees
 
-def demoUnranking(L,H, numberFunction, unrankingFunction, formatString=None, isDirected=False):
-    for n in range(L,H+1):
-        print (formatString % n)
-        for i in range(numberFunction(n)):
-            t = unrankingFunction(n,i)
+def demoUnranking(L,H, c, numberFunction, unrankingFunction, formatString=None, isDirected=False):
+    for w in range(L,H+1):
+        print (formatString % w)
+        for i in range(numberFunction(w,c)):
+            t = unrankingFunction(w,c, i)
             t.show(isDirected=isDirected)
 
-def demoRootedTreesUnranking(L,H):
-    demoUnranking(L,H, numberOfRootedTrees, rootedTree, formatString="ROOTED TREES ON %d VERTICES", isDirected=True)
+def demoRootedTreesUnranking(L,H, c):
+    demoUnranking(L,H, c, numberOfRootedTrees, rootedTree, formatString="ROOTED TREES ON %d VERTICES", isDirected=True)
 
-def demoFreeTreesUnranking(L, H):
-    demoUnranking(L,H, numberOfFreeTrees, freeTree, formatString="FREE TREES ON %d VERTICES", isDirected=False)
+def demoFreeTreesUnranking(L, H, c):
+    demoUnranking(L,H, c, numberOfFreeTrees, freeTree, formatString="FREE TREES ON %d VERTICES", isDirected=False)
 
 #######################################################################################
 #                   MAIN
@@ -458,7 +466,7 @@ if __name__ == "__main__":
     graphicsToScreen = inputBoolean("Graphics to Screen")
     graphicsToFile = inputBoolean("Graphics to File ?")
     demoRecurrences(High)
-#    demoRootedTreesUnranking(Low,High)
+    demoRootedTreesUnranking(Low,High,Tree.Color.GRAY)
 #    demoFreeTreesUnranking(Low,High)
 #    demoRootedTreesEnumeration(Low,High)
 #    demoWeightedRootedTreesEnumeration(Low,High)
