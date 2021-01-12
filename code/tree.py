@@ -49,8 +49,9 @@ class Tree:
         '''
         # TODO Can use binary search to improve
         self.vertices += tree.vertices
+        self.totalWeight += tree.totalWeight
         for i in range(len(self.children)):
-            if tree.vertices >= self.children[i].vertices:
+            if tree.totalWeight >= self.children[i].totalWeight:
                 self.children.insert(i,tree)
                 return
         self.children.append(tree)
@@ -207,8 +208,7 @@ def forestsnmmu(w,m,mu,color):
         for forest in forestsnm_leq(w-m*mu, min(w-m*mu,m-1), color):
             yield set + forest
 
-
-def _freeTrees(n, color):
+def freeMonochromaticTrees(n, color):
     if type(color) == int:
         color = Tree.colors[color]
 
@@ -221,25 +221,20 @@ def _freeTrees(n, color):
         for pair in multisets(lambda : rootedTrees(n//2, color),2):
             yield Tree([pair[0]]+pair[1].children, color=color, weight=pair[1].weight)
 
-def freeTrees(n):
-    return _freeTrees(n, Tree.Color.GRAY)
-
-def weightedFreeTrees(n):
-    return _freeTrees(n, Tree.Color.BLUE)
-
-def demoEnumeration(L,H, f, formatString=None, isDirected=False):
+def demoEnumeration(L,H,f, color=None, formatString=None, isDirected=False):
     '''
     :param L: Smallest weight of a tree
     :param H: Largest weight of a tree
+    :param c: Color of root
     :param f: A generator getting an integer argument (the common weights of the trees)
     :param formatString: A text to print before every weight (has one % sign)
     :param isDirected: Whether or not to draw the tree as rooted.
     '''
-    for n in range(L,H+1):
+    for w in range(L,H+1):
         if formatString is not None:
-            print (formatString % n)
+            print (formatString % w)
         rank = 0
-        for t in f(n):
+        for t in (f(w) if color is None else f(w,color)):
             t.rank = rank
             rank = rank+1
             t.show(isDirected=isDirected)
@@ -256,21 +251,15 @@ def blockTrees(n):
         for redTree in rootedTrees(n//2, Tree.Color.RED, maxSubtreeWeight=n // 2 - 1):
             for yellowTree in rootedTrees(n // 2, Tree.Color.YELLOW):
                 yield Tree([redTree]+yellowTree.children, color=Tree.Color.YELLOW, weight=yellowTree.weight)
-        # Generate trees with tree centroids trees
+        # Generate tricentroidal trees
         for pair in multisets(lambda : rootedTrees(n//2, Tree.Color.YELLOW),2):
             yield Tree(pair, color=Tree.Color.RED, weight=0)
 
-def demoRootedTreesEnumeration(L,H):
-    demoEnumeration(L,H, lambda n : rootedTrees(n, Tree.Color.GRAY), formatString="ROOTED TREES ON %d VERTICES", isDirected=True)
+def demoRootedTreesEnumeration(L,H, c):
+    demoEnumeration(L,H, lambda w, c : rootedTrees(w, c), color=c, formatString="ROOTED TREES ON %d VERTICES", isDirected=True)
 
-def demoWeightedRootedTreesEnumeration(L,H):
-    demoEnumeration(L,H, lambda n : rootedTrees(n, Tree.Color.BLUE), formatString="ROOTED TREES OF WEIGHT %d", isDirected=True)
-
-def demoFreeTreesEnumeration(L,H):
-    demoEnumeration(L,H, freeTrees, formatString="FREE TREES ON %d VERTICES", isDirected=False)
-
-def demoWeightedFreeTreesEnumeration(L,H):
-    demoEnumeration(L,H, weightedFreeTrees, formatString="FREE TREES OF WEIGHT %d", isDirected=False)
+def demoFreeTreesEnumeration(L,H,c=Tree.Color.GRAY):
+    demoEnumeration(L,H, freeMonochromaticTrees, color=c, formatString="FREE TREES OF WEIGHT %d", isDirected=False)
 
 def demoBlockTreesEnumeration(L,H):
     demoEnumeration(L,H, blockTrees, formatString="BLOCK TREES OF GRAPHS ON %d VERTICES", isDirected=False)
@@ -304,30 +293,35 @@ def numberOfRootedTreesWilf(n):
 
 def _computeNumbersForWC(w,c):
     color = Tree.colors[c]
-    rtwc1 = 0 if w < color.minTreeWeight else sum([fwc[w - r][color.childrenColor] for r in range(color.minVertexWeight, min(color.maxVertexWeight,w) + 1)])
+    rtwcm_leq1 = [0]     # 1 dimensional
     fwcm1 = [0]          # 1 dimensional
     fwcmmu1 = [[0]]      # 2 dimensional
     fwcmmu_leq1 = [[0]]  # 2 dimensional
+    for m in range(1, w + 1):  # The results of this loop is used in the net loop (see "dirty trick" below)
+        rtwcm_leq1.append(0 if w < color.minTreeWeight else sum(
+            [fwcm_leq[w - r][color.childrenColor][min(m, w - r)] for r in
+             range(color.minVertexWeight, min(color.maxVertexWeight, w) + 1)]))
     for m in range(1, w + 1):
         if m < color.minTreeWeight:
             temp = [0] * (w // m + 1)
         else:
-            rtmc = rtwc1 if m == w else rtwc[m][c]  # this dirty trick is needed, since the main arrays are not yet updated
+            rtmc = rtwcm_leq1[-1] if m == w else rtwc[m][c]  # this dirty trick is needed, since the main arrays are not yet updated
             temp = [0] + [cc(rtmc, mu) * fwcm_leq[w - m * mu][c][min(w - m * mu, m - 1)] for mu in
                           range(1, w // m + 1)]
         fwcmmu1.append(temp)
         temp = partialSums(temp);
         fwcmmu_leq1.append(temp)
         fwcm1.append(temp[-1])
-    return (rtwc1, sum(fwcm1), fwcm1, partialSums(fwcm1), fwcmmu1, fwcmmu_leq1)
+    return (rtwcm_leq1[-1], rtwcm_leq1, sum(fwcm1), fwcm1, partialSums(fwcm1), fwcmmu1, fwcmmu_leq1)
 
 def _computeNumberOfForests(W):
     # To be consistent with the paper, we work with one based lists.
     # So, we prepend a dummy zero'th entry to every list
     numberOfColors = len(Tree.colors)
     if "rtwc" not in globals():
-        global rtwc, fwc, fwcm, fwcm_leq, fwcmmu, fwcmmu_leq
-        rtwc = [[1]*numberOfColors]             #2 dimensional (w,c)   rt(0,c)=0
+        global rtwc, rtwcm_leq, fwc, fwcm, fwcm_leq, fwcmmu, fwcmmu_leq
+        rtwc = [[0]*numberOfColors]             #2 dimensional (w,c)   rt(0,c)=0
+        rtwcm_leq = [[[0]]*numberOfColors]      #3 dimensional (w,c,m) rt<=(0,c,0)=0
         fwc = [[1]*numberOfColors]              #2 dimensional (w,c)   f(0,c)=1,
         fwcm = [[[1]]*numberOfColors]           #3 dimensional (w,c,m) f(0,c,0) = 1
         fwcm_leq = [[[1]]*numberOfColors]       #3 dimensional (w,c,m) f^<=(0,c,0) = 1
@@ -335,6 +329,7 @@ def _computeNumberOfForests(W):
         fwcmmu_leq = [[[[1]]]*numberOfColors]   #4 dimensional (w,c,m,mu) f^<=(0,c,0,0)=1
     for w in range(len(fwc),W+1):
         rtwc.append([])
+        rtwcm_leq.append([])
         fwc.append([])
         fwcm.append([])
         fwcm_leq.append([])
@@ -343,11 +338,12 @@ def _computeNumberOfForests(W):
         for c in range(0, numberOfColors):
             results = _computeNumbersForWC(w,c)
             rtwc[-1].append(results[0])
-            fwc[-1].append(results[1])
-            fwcm[-1].append(results[2])
-            fwcm_leq[-1].append(results[3])
-            fwcmmu[-1].append(results[4])
-            fwcmmu_leq[-1].append(results[5])
+            rtwcm_leq[-1].append(results[1])
+            fwc[-1].append(results[2])
+            fwcm[-1].append(results[3])
+            fwcm_leq[-1].append(results[4])
+            fwcmmu[-1].append(results[5])
+            fwcmmu_leq[-1].append(results[6])
 
 def numberOfForests(w,c):
     assert w >= 0, "n=%d should be non-negative" % w
@@ -356,13 +352,12 @@ def numberOfForests(w,c):
         _computeNumberOfForests(w)
     return fwc[w][c]
 
-def numberOfRootedTrees(w,c):
+def numberOfRootedTrees(w,c,m=None):
     assert w > 0, "w = %d should be positive" % w
     assert c >= 0 and c < len(Tree.colors), "color %d out of bounds" % c
     if "rtwc" not in globals() or len(rtwc) <= w:
         _computeNumberOfForests(w)
-    color = Tree.colors[c]
-    return rtwc[w][c]
+    return rtwc[w][c] if m is None else rtwcm_leq[w][c][m]
 
 def demoRecurrences(N):
     print ()
@@ -379,18 +374,22 @@ def demoRecurrences(N):
 #         UNRANKING
 ###########################################################################################
 
-def rootedTree(w,c,i):
+def rootedTree(w,c,i,m=None):
     assert c >= 0 and c < len(Tree.colors), "color %d out of bounds" % c
     color = Tree.colors[c]
     assert w >= color.minTreeWeight, "w=%d should be at least %d" % (w,color.minTreeWeight)
     assert i >= 0, "i=%d should be non-negative" % i
-    assert i < numberOfRootedTrees(w,c), "i=%d should be at most the number %d  of trees of weight %d" % (i,numberOfRootedTrees(w,c),w)
+
+    if m is None or m > w:
+        m = w
     r = color.minVertexWeight;
     childColor = color.childrenColor
-    while i > fwc[w-r][childColor]:
-        i -= fwc[w-r][childColor]
+    i1=i
+    while i1 >= fwcm_leq[w-r][childColor][min(m,w-r)]:
+        i1 -= fwcm_leq[w-r][childColor][min(m,w-r)]
+        r += 1
     assert r <= color.maxVertexWeight, "%d exceeded the max vertex weight %d" % (r, color.maxVertexWeight)
-    ret = Tree(None if r == w else forest(w-r, childColor, i),weight=r)
+    ret = Tree(None if r == w else forest(w-r, childColor, i1),weight=r,color=color)
     ret.rank = i
     return ret
 
@@ -420,38 +419,93 @@ def forestwcmmu(w,c, m, mu,i):
     smallChildren = forest (w - m  * mu, c, i2) # the choice of i2 and the order of the trees guarantees that m(F) <= m-1 for the returned forest F
     return bigChildren + smallChildren
 
-def numberOfFreeTrees(n):
-    assert n > 0, "n = %d should be positive" % n
-    return _numberOfMonocentroidalTrees(n) + _numberOfBicentroidalTrees(n)
+def numberOfMonochromaticFreeTrees(w,c):
+    assert w > 0, "n = %d should be positive" % w
+    assert c >= 0 and c < len(Tree.colors), "color %d out of bounds" % c
+    assert Tree.colors[c].childrenColor == c, Tree.colors[c].name + " is not monochromatic"
+    return _numberOfMonocentroidalMonochromaticTrees(w,c) + _numberOfBicentroidalMonochromaticTrees(w,c)
 
-def _numberOfBicentroidalTrees(n):
-    return cc(numberOfForests(n // 2 - 1), 2) if n % 2 == 0 else 0
+def _numberOfBicentroidalMonochromaticTrees(w,c):
+    return cc(numberOfRootedTrees(w // 2, c, w//2-1), 2) if w % 2 == 0 else 0
 
-def _numberOfMonocentroidalTrees(n):
-    numberOfForests(n-1)  # Trigger computation of the f-values  // TODO: Make this cleaner & safer
-    return fnm_leq[n-1] [(n-1) // 2]
+def _numberOfMonocentroidalMonochromaticTrees(w,c):
+    numberOfForests(w,c)  # Trigger computation of the f-values  // TODO: Make this cleaner & safer
+    return numberOfRootedTrees(w, c, (w - 1) // 2)
 
-def freeTree(n,i):
-    if n % 2 == 0 and i >= _numberOfMonocentroidalTrees(n):
-        i -= _numberOfMonocentroidalTrees(n)
-        pair = [ rootedTree(n//2, treeIndex) for treeIndex in multiset(fn[n // 2 - 1],2,i) ]
-        pair[0].addTree(pair[1])
-        return pair[0]
+def freeMonochromaticTree(w,c,i):
+    i1 = i;
+    if w % 2 == 0 and i1 >= _numberOfMonocentroidalMonochromaticTrees(w,c):
+        # return bicentroidal tree
+        i1 -= _numberOfMonocentroidalMonochromaticTrees(w,c)
+        pair = [ rootedTree(w//2, c, treeIndex) for treeIndex in multiset(numberOfRootedTrees(w // 2, c, w//2-1),2,i1) ]
+        t = pair[0]
+        t.addTree(pair[1])
     else:
-        return rootedTree(n,i)  # The order of the trees and the value of i guarantee that there will be no big subtrees
+        #return monocentroidal tree
+        t = rootedTree(w, c, i, (w - 1) // 2)
+    t.rank = i
+    return t
+
+def numberOfBlockTrees(w):
+    assert w > 0, "n = %d should be positive" % w
+    return _numberOfMonocentroidalBlockTrees(w) + _numberOfBicentroidalBlockTrees(w) + _numberOfTricentroidalBlockTrees(w)
+
+def _numberOfMonocentroidalBlockTrees(w):
+    numberOfForests(w,Tree.Color.RED)     # Trigger computation of the f-values  // TODO: Make this cleaner & safer
+    return rtwcm_leq[w][Tree.Color.RED][(w-1)//2] + rtwcm_leq[w][Tree.Color.YELLOW][(w-1)//2]
+
+def _numberOfBicentroidalBlockTrees(w):
+    return numberOfRootedTrees(w // 2, Tree.Color.RED, w//2-1) * numberOfRootedTrees(w//2, Tree.Color.YELLOW, w//2-1) if w % 2 == 0 else 0
+
+def _numberOfTricentroidalBlockTrees(w):
+    return cc(numberOfRootedTrees(w // 2, Tree.Color.YELLOW),2) if w % 2 == 0 else 0
+
+def blockTree(w,i):
+    assert w > 0, "n = %d should be positive" % w
+    i1 = i
+    for c in [Tree.Color.RED, Tree.Color.YELLOW]:
+        if i1 >= rtwcm_leq[w][c][(w-1)//2]:
+            i1 -= rtwcm_leq[w][c][(w - 1) // 2]
+        else:
+            t = rootedTree(w,c,i1,(w-1)//2)
+            t.rank = i
+            return t
+
+    assert w % 2 == 0, "w should be even at this point"
+
+    if i1 >= _numberOfBicentroidalBlockTrees(w):
+        i1 -= _numberOfBicentroidalBlockTrees(w)
+    else:
+        # Generate a tricentroidal tree
+        (i1,i2) = divmod (i1, numberOfRootedTrees(w // 2,Tree.Color.RED))
+        redTree = rootedTree(w//2, Tree.Color.RED, i2, m=w//2-1)
+        yellowTree = rootedTree(w//2, Tree.Color.YELLOW,i1, m=w//2-1)
+        t = Tree([redTree]+yellowTree.children, color=Tree.Color.YELLOW, weight=yellowTree.weight)
+        t.rank = i
+        return t
+
+    # Generate a tricentroidal tree
+    pair = [rootedTree(w // 2, Tree.Color.YELLOW, treeIndex) for treeIndex in
+            multiset(rtwc[w // 2 - 1][Tree.Color.YELLOW], 2, i1)]
+    t = Tree(pair, color=Tree.Color.RED, weight=0)
+    t.rank = i
+    return t
 
 def demoUnranking(L,H, c, numberFunction, unrankingFunction, formatString=None, isDirected=False):
     for w in range(L,H+1):
         print (formatString % w)
-        for i in range(numberFunction(w,c)):
-            t = unrankingFunction(w,c, i)
+        for i in range(numberFunction(w) if c is None else numberFunction(w, c)):
+            t = unrankingFunction(w, i) if c is None else unrankingFunction(w,c,i)
             t.show(isDirected=isDirected)
 
 def demoRootedTreesUnranking(L,H, c):
-    demoUnranking(L,H, c, numberOfRootedTrees, rootedTree, formatString="ROOTED TREES ON %d VERTICES", isDirected=True)
+    demoUnranking(L,H,c, numberOfRootedTrees, rootedTree, formatString="ROOTED TREES OF WEIGHT %d", isDirected=True)
 
 def demoFreeTreesUnranking(L, H, c):
-    demoUnranking(L,H, c, numberOfFreeTrees, freeTree, formatString="FREE TREES ON %d VERTICES", isDirected=False)
+    demoUnranking(L,H,c, numberOfMonochromaticFreeTrees, freeMonochromaticTree, formatString="FREE TREES OF WEIGHT %d", isDirected=False)
+
+def demoBlockTreesUnranking(L, H):
+    demoUnranking(L,H,None, numberOfBlockTrees, blockTree, formatString="FREE TREES OF WEIGHT %d", isDirected=False)
 
 #######################################################################################
 #                   MAIN
@@ -460,16 +514,16 @@ def inputBoolean(str):
     return input(str + "(Y/N)").upper().startswith("Y")
 
 if __name__ == "__main__":
-    Low = int(input("Smallest Tree Size ?"))
-    High = int(input("Largest Tree Size ?"))
+    low = int(input("Smallest Tree Size ?"))
+    high = int(input("Largest Tree Size ?"))
+    color = int(input("Color number ?"))
     textOutput = inputBoolean("Text Output ?")
     graphicsToScreen = inputBoolean("Graphics to Screen")
     graphicsToFile = inputBoolean("Graphics to File ?")
-    demoRecurrences(High)
-    demoRootedTreesUnranking(Low,High,Tree.Color.GRAY)
-#    demoFreeTreesUnranking(Low,High)
-#    demoRootedTreesEnumeration(Low,High)
-#    demoWeightedRootedTreesEnumeration(Low,High)
-#    demoFreeTreesEnumeration(Low,High)
-#    demoWeightedFreeTreesEnumeration(Low,High)
-#    demoBlockTreesEnumeration(Low,High)
+##    demoRecurrences(high)
+##    demoRootedTreesUnranking(low,high,color)
+##    demoFreeTreesUnranking(low,high, color)
+    demoBlockTreesUnranking(low,high)
+##    demoRootedTreesEnumeration(low,high,color)
+##    demoFreeTreesEnumeration(low,high,color)
+    demoBlockTreesEnumeration(low,high)
