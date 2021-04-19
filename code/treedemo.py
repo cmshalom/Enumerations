@@ -69,7 +69,9 @@ if __name__ == "__main__":
 ##    demoRecurrences(high)
 ##    demoRootedTreesUnranking(low,high,color)
 ##    demoFreeTreesUnranking(low,high, color)
-    demoBlockTreesUnranking(low,high)
+##    demoBlockTreesUnranking(low,high)
 ##    demoRootedTreesEnumeration(low,high,color)
 ##    demoFreeTreesEnumeration(low,high,color)
+    for i in range(1,high+1):
+        print(i,numberOfBlockTrees(i))
     demoBlockTreesEnumeration(low,high)

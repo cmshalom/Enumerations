@@ -409,7 +409,7 @@ def freeMonochromaticTree(w,c,i):
     return t
 
 def numberOfBlockTrees(w):
-    assert w > 0, "n = %d should be positive" % w
+    assert w > 0, "w = %d should be positive" % w
     return _numberOfMonocentroidalBlockTrees(w) + _numberOfBicentroidalBlockTrees(w) + _numberOfTricentroidalBlockTrees(w)
 
 def _numberOfMonocentroidalBlockTrees(w):
