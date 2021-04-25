@@ -10,8 +10,12 @@ def boundedGenerator(g, n):
     yields at most n items
     :return:
     '''
-    for i in range(n):
-        yield next(g)
+    try:
+        for i in range(n):
+            yield next(g)
+    except StopIteration:
+        return 
+    
 
 def concatenateGenerators(generators):
     for g in generators:
