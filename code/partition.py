@@ -43,7 +43,7 @@ class Partition:
                 result += " + "
             result += str(b[0]) + "^" + str(b[1])
         return result
-        
+
 def _partitions(n, max):
     ''' Generates all the partitions of n into numbers less than or equal max
     :param n: The number to be partitioned
@@ -58,12 +58,6 @@ def _partitions(n, max):
         for partition in _partitions(n - i, i):
             yield Partition(i, partition)
 
-def partitions(n):
+def Partitions(n):
     ''' Generates all the partitions of n '''
     return _partitions(n, n)
-
-
-if __name__ == "__main__":
-    print ('Partitions of', 10)
-    for partition in partitions(10):
-        print (partition, "=", repr(partition))

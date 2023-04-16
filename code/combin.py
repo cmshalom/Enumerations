@@ -13,12 +13,6 @@ def Choose(n,k):
         result //= i+1
     return result
 
-def PrintPascal(N):
-    for n in range(N+1):
-        for k in range(n+1):
-            print (choose(n,k), end=" ")
-        print ()
-
 def ChooseMinGE(k,i):
     '''
     :param k:
