@@ -1,5 +1,5 @@
 from bisect import *
-from combin import *
+import combin
 import util
 
 import networkx as nx
@@ -204,7 +204,7 @@ def forestsnmmu(w,m,mu,color):
     def f():
         return rootedTrees(m,color)
 
-    for set in multisets(f, mu):
+    for set in combin.Multisets(f, mu):
         for forest in forestsnm_leq(w-m*mu, min(w-m*mu,m-1), color):
             yield set + forest
 
@@ -218,7 +218,7 @@ def freeMonochromaticTrees(n, color):
 
     # Generate bicentroidal trees
     if n % 2 == 0:
-        for pair in multisets(lambda : rootedTrees(n//2, color),2):
+        for pair in combin.Multisets(lambda : rootedTrees(n//2, color),2):
             yield Tree([pair[0]]+pair[1].children, color=color, weight=pair[1].weight)
 
 def blockTrees(n):
@@ -234,7 +234,7 @@ def blockTrees(n):
             for yellowTree in rootedTrees(n // 2, Tree.Color.YELLOW):
                 yield Tree([redTree]+yellowTree.children, color=Tree.Color.YELLOW, weight=yellowTree.weight)
         # Generate tricentroidal trees
-        for pair in multisets(lambda : rootedTrees(n//2, Tree.Color.YELLOW),2):
+        for pair in combin.Multisets(lambda : rootedTrees(n//2, Tree.Color.YELLOW),2):
             yield Tree(pair, color=Tree.Color.RED, weight=0)
 
 ###########################################################################################
@@ -279,7 +279,7 @@ def _computeNumbersForWC(w,c):
             temp = [0] * (w // m + 1)
         else:
             rtmc = rtwcm_leq1[-1] if m == w else rtwc[m][c]  # this dirty trick is needed, since the main arrays are not yet updated
-            temp = [0] + [cc(rtmc, mu) * fwcm_leq[w - m * mu][c][min(w - m * mu, m - 1)] for mu in
+            temp = [0] + [combin.CC(rtmc, mu) * fwcm_leq[w - m * mu][c][min(w - m * mu, m - 1)] for mu in
                           range(1, w // m + 1)]
         fwcmmu1.append(temp)
         temp = util.PartialSums(temp);
@@ -377,7 +377,7 @@ def forestwcmmu(w,c, m, mu,i):
     '''
     numberOfSmallForests = fwcm_leq[w - m * mu][c][min(w - m * mu, m - 1)]
     (i1,i2) = divmod (i, numberOfSmallForests)
-    bigChildren = [rootedTree(m, c, treeIndex) for treeIndex in multiset(rtwc[m][c], mu, i1)]
+    bigChildren = [rootedTree(m, c, treeIndex) for treeIndex in combin.Multiset(rtwc[m][c], mu, i1)]
     smallChildren = forest (w - m  * mu, c, i2) # the choice of i2 and the order of the trees guarantees that m(F) <= m-1 for the returned forest F
     return bigChildren + smallChildren
 
@@ -399,7 +399,7 @@ def freeMonochromaticTree(w,c,i):
     if w % 2 == 0 and i1 >= _numberOfMonocentroidalMonochromaticTrees(w,c):
         # return bicentroidal tree
         i1 -= _numberOfMonocentroidalMonochromaticTrees(w,c)
-        pair = [ rootedTree(w//2, c, treeIndex) for treeIndex in multiset(numberOfRootedTrees(w // 2, c, w//2-1),2,i1) ]
+        pair = [ rootedTree(w//2, c, treeIndex) for treeIndex in combin.Multiset(numberOfRootedTrees(w // 2, c, w//2-1),2,i1) ]
         t = pair[0]
         t.addTree(pair[1])
     else:
@@ -448,7 +448,7 @@ def blockTree(w,i):
 
     # Generate a tricentroidal tree
     pair = [rootedTree(w // 2, Tree.Color.YELLOW, treeIndex) for treeIndex in
-            multiset(rtwc[w // 2 - 1][Tree.Color.YELLOW], 2, i1)]
+            combin.Multiset(rtwc[w // 2 - 1][Tree.Color.YELLOW], 2, i1)]
     t = Tree(pair, color=Tree.Color.RED, weight=0)
     t.rank = i
     return t
