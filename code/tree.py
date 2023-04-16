@@ -1,6 +1,6 @@
 from bisect import *
 from combin import *
-from util import *
+import util
 
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -282,10 +282,10 @@ def _computeNumbersForWC(w,c):
             temp = [0] + [cc(rtmc, mu) * fwcm_leq[w - m * mu][c][min(w - m * mu, m - 1)] for mu in
                           range(1, w // m + 1)]
         fwcmmu1.append(temp)
-        temp = partialSums(temp);
+        temp = util.PartialSums(temp);
         fwcmmu_leq1.append(temp)
         fwcm1.append(temp[-1])
-    return (rtwcm_leq1[-1], rtwcm_leq1, sum(fwcm1), fwcm1, partialSums(fwcm1), fwcmmu1, fwcmmu_leq1)
+    return (rtwcm_leq1[-1], rtwcm_leq1, sum(fwcm1), fwcm1, util.PartialSums(fwcm1), fwcmmu1, fwcmmu_leq1)
 
 def _computeNumberOfForests(W):
     # To be consistent with the paper, we work with one based lists.

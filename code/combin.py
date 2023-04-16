@@ -1,6 +1,6 @@
 import copy
 import sys
-from util import *
+import util
 
 def choose(n,k):
     ''' Computes \choose {n} {k}'''
@@ -72,7 +72,7 @@ def _multisets(f, k, bound):
         yield []
         return
     i = 0
-    for item in boundedGenerator(f(),bound):
+    for item in util.BoundedGenerator(f(),bound):
         i += 1
         for multiset in _multisets(f, k-1, i):
             yield [item] + multiset

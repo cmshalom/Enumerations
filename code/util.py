@@ -1,10 +1,11 @@
-def partialSums(a):
+
+def PartialSums(a: list[int]) -> list[int]:
     result=[a[0]]
     for elt in a[1:]:
         result.append(result[-1]+elt)
     return result
 
-def boundedGenerator(g, n):
+def BoundedGenerator(g, n: int):
     '''
     Acts as a generator that bounds the generator g
     yields at most n items
@@ -17,7 +18,6 @@ def boundedGenerator(g, n):
         return 
     
 
-def concatenateGenerators(generators):
+def ConcatenateGenerators(generators):
     for g in generators:
-        for elt in g:
-            yield elt
+      yield from g

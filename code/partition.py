@@ -43,6 +43,7 @@ class Partition:
                 result += " + "
             result += str(b[0]) + "^" + str(b[1])
         return result
+        
 def _partitions(n, max):
     ''' Generates all the partitions of n into numbers less than or equal max
     :param n: The number to be partitioned
