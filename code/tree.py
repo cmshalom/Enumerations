@@ -1,9 +1,11 @@
+import sys
+import networkx as nx
+import matplotlib.pyplot as plt
+
+
 from bisect import *
 import combin
 import util
-
-import networkx as nx
-import matplotlib.pyplot as plt
 
 class Tree:
     class Color:
@@ -388,7 +390,7 @@ def numberOfMonochromaticFreeTrees(w,c):
     return _numberOfMonocentroidalMonochromaticTrees(w,c) + _numberOfBicentroidalMonochromaticTrees(w,c)
 
 def _numberOfBicentroidalMonochromaticTrees(w,c):
-    return cc(numberOfRootedTrees(w // 2, c, w//2-1), 2) if w % 2 == 0 else 0
+    return combin.CC(numberOfRootedTrees(w // 2, c, w//2-1), 2) if w % 2 == 0 else 0
 
 def _numberOfMonocentroidalMonochromaticTrees(w,c):
     numberOfForests(w,c)  # Trigger computation of the f-values  // TODO: Make this cleaner & safer
@@ -420,7 +422,7 @@ def _numberOfBicentroidalBlockTrees(w):
     return numberOfRootedTrees(w // 2, Tree.Color.RED, w//2-1) * numberOfRootedTrees(w//2, Tree.Color.YELLOW, w//2-1) if w % 2 == 0 else 0
 
 def _numberOfTricentroidalBlockTrees(w):
-    return cc(numberOfRootedTrees(w // 2, Tree.Color.YELLOW),2) if w % 2 == 0 else 0
+    return combin.CC(numberOfRootedTrees(w // 2, Tree.Color.YELLOW),2) if w % 2 == 0 else 0
 
 def blockTree(w,i):
     assert w > 0, "n = %d should be positive" % w

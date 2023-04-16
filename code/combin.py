@@ -79,6 +79,6 @@ def Multiset(n,k,i):
     assert i < CC(n,k), "i=%d should be less than the number %d of multisets of 0 - %d with %d elements" % (i, cc(n,k), n-1, k)
     if n == 1 or k == 0:
         return [0]*k
-    firstElement = cc_minGE(k,i+1)          # Time complexity O(firstElement+k) \in O(n+k)
-    smallerMultisets = cc(firstElement-1,k) # Time complexity O(k)
+    firstElement = CCMinGE(k,i+1)          # Time complexity O(firstElement+k) \in O(n+k)
+    smallerMultisets = CC(firstElement-1,k) # Time complexity O(k)
     return [firstElement-1] + Multiset(firstElement,k-1,i - smallerMultisets)
