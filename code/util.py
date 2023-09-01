@@ -16,8 +16,3 @@ def BoundedGenerator(g, n: int):
             yield next(g)
     except StopIteration:
         return 
-    
-
-def ConcatenateGenerators(generators):
-    for g in generators:
-      yield from g
