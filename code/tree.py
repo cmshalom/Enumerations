@@ -61,8 +61,7 @@ class Tree:
     def nodesDFS(self):
         yield self
         for child in self.children:
-            for node in nodesDFS(child):
-                yield node
+            yield from nodesDFS(child)
 
     def getName(self):
         name = "Weight:" + str(self.totalWeight)
@@ -196,8 +195,7 @@ def forestsnm_leq(w,m,color):
 
     for mm in range (color.minTreeWeight,m+1):
         for mu in range (1, w // mm + 1):
-            for forest in forestsnmmu(w,mm,mu,color):
-                yield forest
+            yield from forestsnmmu(w,mm,mu,color)
     return
 
 def forestsnmmu(w,m,mu,color):
@@ -215,8 +213,7 @@ def freeMonochromaticTrees(n, color):
         color = Tree.colors[color]
 
     # Generate monocentroidal trees
-    for t in rootedTrees(n,color, maxSubtreeWeight=(n-1)//2):
-            yield t
+    yield from rootedTrees(n,color, maxSubtreeWeight=(n-1)//2)
 
     # Generate bicentroidal trees
     if n % 2 == 0:

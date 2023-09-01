@@ -58,8 +58,7 @@ def Multisets(n,k):
             for multiset in Multisets(firstElement+1,k-1):
                 yield [firstElement] + multiset
     else:
-        for multiset in _multisets(n, k, sys.maxsize):
-            yield multiset
+        yield from _multisets(n, k, sys.maxsize)
 
 def _multisets(f, k, bound):
     if k == 0:
