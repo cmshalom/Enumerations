@@ -222,10 +222,8 @@ def freeMonochromaticTrees(n, color):
 
 def blockTrees(n):
     # Generate monocentroidal trees
-    for t in rootedTrees(n, Tree.Color.RED, maxSubtreeWeight=(n-1)//2):
-            yield t
-    for t in rootedTrees(n, Tree.Color.YELLOW, maxSubtreeWeight=(n-1)//2):
-            yield t
+    yield from rootedTrees(n, Tree.Color.RED, maxSubtreeWeight=(n-1)//2)
+    yield from rootedTrees(n, Tree.Color.YELLOW, maxSubtreeWeight=(n-1)//2)
 
     if n % 2 == 0:
         # Generate bicentroidal trees
