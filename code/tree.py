@@ -329,6 +329,16 @@ def numberOfRootedTrees(w,c,m=None):
         _computeNumberOfForests(w)
     return rtwc[w][c] if m is None else rtwcm_leq[w][c][m]
 
+def numberOfBlockTrees(n):
+    red_trees = tree_enumeration.numberOfRootedTrees(n, tree_enumeration.Tree.Color.RED, m=(n-1)//2)
+    yellow_trees = tree_enumeration.numberOfRootedTrees(n, tree_enumeration.Tree.Color.YELLOW, m=(n-1)//2)
+    if n % 2 == 0:
+      half_red_trees = tree_enumeration.numberOfRootedTrees(n//2, tree_enumeration.Tree.Color.RED, m=n // 2 - 1)
+      half_yellow_trees = tree_enumeration.numberOfRootedTrees(n//2, tree_enumeration.Tree.Color.YELLOW)
+      mixed_trees = half_red_trees * half_yellow_trees + (half_yellow_trees * (half_yellow_trees + 1) // 2)
+    else:
+      mixed_trees = 0
+    return red_trees + yellow_trees + mixed_trees
 ###########################################################################################
 #         UNRANKING
 ###########################################################################################
