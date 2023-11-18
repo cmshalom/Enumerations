@@ -1,8 +1,46 @@
 from typing import Iterable
+import networkx as nx
 
 import tree
 from tree import Tree, Color
 import combin
+
+def BlockTreeToBlockGraph(t:nx.Graph) -> nx.Graph:
+  def node_name(clique_no, vertex_no):
+    return f"K{clique_no}_{vertex_no}"
+
+  g = nx.Graph()
+  # Add Cut Vertces
+  for v in t.nodes(data=True):
+    if v[1].get('color', 'white') == 'yellow':
+      g.add_node(v[0], color='yellow')
+  
+  # Add Cliques
+  for v in t.nodes(data=True):
+    if v[1].get('color', 'white') == 'red':
+      clique_nodes = [node_name(v[0], i) for i in range(v[1]['weight'])]
+      g.add_nodes_from(clique_nodes, color='red')
+      clique_nodes += [c for c in t.neighbors(v[0])]
+      for x in clique_nodes:
+        for y in clique_nodes:
+          if y == x:
+            break;
+          g.add_edge(x,y)
+  return g
+
+class BlockGraph:
+  def __init__(self, t: Tree):
+    self.tree = t
+    self._graph = None
+
+  @property
+  def name(self):
+    return self.t.name
+
+  def graph(self, isDirected=False):
+    if self._graph is None:
+      self._graph = BlockTreeToBlockGraph(self.t.graph())
+    return self._graph
 
 def blockTrees(n:int) -> Iterable[Tree]:
     # Generate monocentroidal trees
@@ -17,6 +55,10 @@ def blockTrees(n:int) -> Iterable[Tree]:
         # Generate tricentroidal trees
         for pair in combin.Multisets(lambda : tree.rootedTrees(n//2, Color.YELLOW),2):
             yield Tree(pair, color=Color.RED, weight=0)
+
+def blockGraphs(n:int) -> Iterable[BlockGraph]:
+  for t in blockTrees(n):
+    yield BlockGraph(t)
 
 def _numberOfMonocentroidalBlockTrees(w:int) -> int:
     tree.numberOfForests(w, Color.RED)     # Trigger computation of the f-values  // TODO: Make this cleaner & safer
@@ -62,3 +104,6 @@ def blockTree(w:int, i:int) -> Tree:
     t = Tree(pair, color=Color.RED, weight=0)
     t.rank = i
     return t
+
+def blockGraph(n:int, i:int) -> BlockGraph:
+  return BlockGraph(blockTree(n, i).graph())

@@ -41,15 +41,6 @@ NODE_COLORS = [
 def _node_color(c: Color | NodeColor) -> NodeColor:
   return c if isinstance(c, NodeColor) else NODE_COLORS[c]
 
-def draw_colored_graph(g: nx.Graph, weights:bool = False) -> None:
-    colors= [v[1].get('color', 'gray') for v in g.nodes(data=True)]
-    if weights:
-      labels= {v[0]: str(v[1].get('weight', 0)) for v in g.nodes(data=True)}
-      nx.draw_planar(g, with_labels=True, labels=labels, font_weight='bold', font_size=20,
-                    node_color=colors, node_size=700)
-    else:
-      nx.draw_planar(g, node_color=colors, node_size=700)
-
 class Tree:
     def __init__(self, children:list[Any], weight:int=1, color: Color | NodeColor = Color.GRAY):
         assert weight >= 0, f"weight = {weight}. Should be non-negative"
@@ -144,8 +135,6 @@ class Tree:
             str += line + "\n"
         return str
 
-    def plot(self, isDirected=False):
-        draw_colored_graph(self.graph(isDirected), weights=True)
 
     def graph(self, isDirected=False) -> nx.Graph:
         g = nx.DiGraph() if isDirected else nx.Graph()
@@ -162,26 +151,6 @@ class Tree:
             g.add_edge(parent,root)
         for child in self.children:
             child._add_to_graph(g, root)
-
-    def show(self, isDirected=False, textOutput=True, graphicsToScreen=False, 
-                   graphicsToFile=False, toGraph6=False):
-        '''
-        Exhibits self depending on the global boolean variables textOutput, graphicsToScreen and GraphicsToFile
-        '''
-        if textOutput:
-            print(self.name)
-            print(self.__repr__())
-        if graphicsToScreen or graphicsToFile:
-            plt.clf()
-            if graphicsToScreen:
-                plt.title(self.name)
-            self.plot(isDirected=isDirected)
-            if graphicsToFile:
-                plt.savefig(self.name)
-            if graphicsToScreen:
-                plt.show()
-        if toGraph6:
-          nx.write_graph6(self.graph(), f"{self.name}.g6")
 
 ###########################################################################################
 #         GENERATORS
