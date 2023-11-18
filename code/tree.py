@@ -55,6 +55,7 @@ class Tree:
             self.leaves = sum([child.leaves for child in children])
         self.vertices = 1 + sum([child.vertices for child in children])
         self.totalWeight = self.weight + sum([child.totalWeight for child in children])
+        self.rank = None
 
     def addTree(self, tree):
         '''
@@ -78,7 +79,7 @@ class Tree:
     @property
     def name(self):
         name = "Tree-" + str(self.totalWeight)
-        if "rank" in self.__dict__:
+        if self.rank is not None:
             name += "-" + str(self.rank)
         return name
 

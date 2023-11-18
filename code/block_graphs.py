@@ -32,11 +32,13 @@ class BlockGraph:
   def __init__(self, t: Tree):
     self.tree = t
     self._graph = None
+    self.rank = None
 
   @property
   def name(self):
     name = "BlockGraph-" + str(self.tree.totalWeight)
-    if "rank" in self.__dict__:
+    rank = self.rank or self.tree.rank
+    if rank is not None:
         name += "-" + str(self.rank)
     return name
 
@@ -113,4 +115,6 @@ def blockTree(w:int, i:int) -> Tree:
     return t
 
 def blockGraph(n:int, i:int) -> BlockGraph:
-  return BlockGraph(blockTree(n, i))
+  ret = BlockGraph(blockTree(n, i))
+  ret.rank = i
+  return ret
