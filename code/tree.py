@@ -237,20 +237,6 @@ def freeMonochromaticTrees(n:int, color: Color | NodeColor) -> Iterable[Tree]:
         for pair in combin.Multisets(lambda : rootedTrees(n//2, color),2):
             yield Tree([pair[0]]+pair[1].children, color=color, weight=pair[1].weight)
 
-def blockTrees(n:int) -> Iterable[Tree]:
-    # Generate monocentroidal trees
-    yield from rootedTrees(n, Color.RED, maxSubtreeWeight=(n-1)//2)
-    yield from rootedTrees(n, Color.YELLOW, maxSubtreeWeight=(n-1)//2)
-
-    if n % 2 == 0:
-        # Generate bicentroidal trees
-        for redTree in rootedTrees(n//2, Color.RED, maxSubtreeWeight=n // 2 - 1):
-            for yellowTree in rootedTrees(n // 2, Color.YELLOW):
-                yield Tree([redTree]+yellowTree.children, color=Color.YELLOW, weight=yellowTree.weight)
-        # Generate tricentroidal trees
-        for pair in combin.Multisets(lambda : rootedTrees(n//2, Color.YELLOW),2):
-            yield Tree(pair, color=Color.RED, weight=0)
-
 ###########################################################################################
 #         RECURRENCES
 ###########################################################################################
@@ -414,50 +400,5 @@ def freeMonochromaticTree(w:int, c:Color, i:int) -> Tree:
     else:
         #return monocentroidal tree
         t = rootedTree(w, c, i, (w - 1) // 2)
-    t.rank = i
-    return t
-
-def numberOfBlockTrees(w:int) -> int:
-    assert w > 0, f"w = {w}. Should be positive"
-    return _numberOfMonocentroidalBlockTrees(w) + _numberOfBicentroidalBlockTrees(w) + _numberOfTricentroidalBlockTrees(w)
-
-def _numberOfMonocentroidalBlockTrees(w:int) -> int:
-    numberOfForests(w, Color.RED)     # Trigger computation of the f-values  // TODO: Make this cleaner & safer
-    return rtwcm_leq[w][Color.RED][(w-1)//2] + rtwcm_leq[w][Color.YELLOW][(w-1)//2]
-
-def _numberOfBicentroidalBlockTrees(w:int) -> int:
-    return numberOfRootedTrees(w // 2, Color.RED, w//2-1) * numberOfRootedTrees(w//2, Color.YELLOW, w//2-1) if w % 2 == 0 else 0
-
-def _numberOfTricentroidalBlockTrees(w:int) -> int:
-    return combin.CC(numberOfRootedTrees(w // 2, Color.YELLOW), 2) if w % 2 == 0 else 0
-
-def blockTree(w:int, i:int) -> Tree:
-    assert w > 0, f"w = {w}. Should be positive"
-    i1 = i
-    for c in [Color.RED, Color.YELLOW]:
-        if i1 >= rtwcm_leq[w][c][(w-1)//2]:
-            i1 -= rtwcm_leq[w][c][(w - 1) // 2]
-        else:
-            t = rootedTree(w,c,i1,(w-1)//2)
-            t.rank = i
-            return t
-
-    assert w % 2 == 0, "w should be even at this point"
-
-    if i1 >= _numberOfBicentroidalBlockTrees(w):
-        i1 -= _numberOfBicentroidalBlockTrees(w)
-    else:
-        # Generate a tricentroidal tree
-        (i1,i2) = divmod (i1, numberOfRootedTrees(w // 2,Color.RED))
-        redTree = rootedTree(w//2, Color.RED, i2, m=w//2-1)
-        yellowTree = rootedTree(w//2, Color.YELLOW,i1, m=w//2-1)
-        t = Tree([redTree]+yellowTree.children, color=Color.YELLOW, weight=yellowTree.weight)
-        t.rank = i
-        return t
-
-    # Generate a tricentroidal tree
-    pair = [rootedTree(w // 2, Color.YELLOW, treeIndex) for treeIndex in
-            combin.Multiset(rtwc[w // 2 - 1][Color.YELLOW], 2, i1)]
-    t = Tree(pair, color=Color.RED, weight=0)
     t.rank = i
     return t
