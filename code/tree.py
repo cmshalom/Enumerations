@@ -41,6 +41,14 @@ NODE_COLORS = [
 def _node_color(c: Color | NodeColor) -> NodeColor:
   return c if isinstance(c, NodeColor) else NODE_COLORS[c]
 
+def draw_colored_graph(g: nx.Graph, weights:bool = False) -> None:
+    colors= [v[1].get('color', 'gray') for v in g.nodes(data=True)]
+    if weights:
+      labels= {v[0]: str(v[1].get('weight', 0)) for v in g.nodes(data=True)}
+      nx.draw_planar(g, with_labels=True, labels=labels, font_weight='bold', font_size=20,
+                    node_color=colors, node_size=700)
+    else:
+      nx.draw_planar(g, node_color=colors, node_size=700)
 
 class Tree:
     def __init__(self, children:list[Any], weight:int=1, color: Color | NodeColor = Color.GRAY):
@@ -137,11 +145,7 @@ class Tree:
         return str
 
     def plot(self, isDirected=False):
-        g = self.graph(isDirected)
-        colors= [v[1].get('color', 'gray') for v in g.nodes(data=True)]
-        labels= {v[0]: str(v[1].get('weight', 0)) for v in g.nodes(data=True)}
-        nx.draw_planar(g, with_labels=True, labels=labels, font_weight='bold', font_size=20,
-                       node_color=colors, node_size=700)
+        draw_colored_graph(self.graph(isDirected), weights=True)
 
     def graph(self, isDirected=False) -> nx.Graph:
         g = nx.DiGraph() if isDirected else nx.Graph()
