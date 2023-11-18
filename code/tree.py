@@ -77,7 +77,7 @@ class Tree:
 
     @property
     def name(self):
-        name = "Weight:" + str(self.totalWeight)
+        name = "Tree-" + str(self.totalWeight)
         if "rank" in self.__dict__:
             name += "-" + str(self.rank)
         return name

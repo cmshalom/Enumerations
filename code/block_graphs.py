@@ -35,7 +35,7 @@ class BlockGraph:
 
   @property
   def name(self):
-    name = "Nodes:" + str(self.tree.totalWeight)
+    name = "BlockGraph-" + str(self.tree.totalWeight)
     if "rank" in self.__dict__:
         name += "-" + str(self.rank)
     return name
