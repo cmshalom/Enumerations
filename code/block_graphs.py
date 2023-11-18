@@ -35,11 +35,18 @@ class BlockGraph:
 
   @property
   def name(self):
-    return self.t.name
+    name = "Nodes:" + str(self.tree.totalWeight)
+    if "rank" in self.__dict__:
+        name += "-" + str(self.rank)
+    return name
+
+  @property
+  def is_planar(self):
+    return False
 
   def graph(self, isDirected=False):
     if self._graph is None:
-      self._graph = BlockTreeToBlockGraph(self.t.graph())
+      self._graph = BlockTreeToBlockGraph(self.tree.graph())
     return self._graph
 
 def blockTrees(n:int) -> Iterable[Tree]:
@@ -106,4 +113,4 @@ def blockTree(w:int, i:int) -> Tree:
     return t
 
 def blockGraph(n:int, i:int) -> BlockGraph:
-  return BlockGraph(blockTree(n, i).graph())
+  return BlockGraph(blockTree(n, i))

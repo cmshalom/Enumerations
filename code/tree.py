@@ -82,6 +82,10 @@ class Tree:
             name += "-" + str(self.rank)
         return name
 
+    @property
+    def is_planar(self):
+      return True
+
     def __str__(self):
         '''
         :return: a string with the number of vertices of the tree and every subtree

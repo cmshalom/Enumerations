@@ -19,14 +19,21 @@ def BoundedGenerator(g, n: int):
     except StopIteration:
         return 
 
-def DrawColoredGraph(g: nx.Graph, weights:bool = False) -> None:
+def DrawColoredGraph(g: nx.Graph, weights:bool = False, planar:bool=True) -> None:
     colors= [v[1].get('color', 'gray') for v in g.nodes(data=True)]
     if weights:
-      labels= {v[0]: str(v[1].get('weight', 0)) for v in g.nodes(data=True)}
-      nx.draw_planar(g, with_labels=True, labels=labels, font_weight='bold', font_size=20,
-                    node_color=colors, node_size=700)
+      labels= {v[0]: str(v[1].get('weight', '')) for v in g.nodes(data=True)}
+      if planar:
+        nx.draw_planar(g, with_labels=True, labels=labels, font_weight='bold', font_size=20,
+                      node_color=colors, node_size=700)
+      else:
+        nx.draw_networkx(g, with_labels=True, labels=labels, font_weight='bold', font_size=20,
+                         node_color=colors, node_size=700)
     else:
-      nx.draw_planar(g, node_color=colors, node_size=700)
+      if planar:
+        nx.draw_planar(g, node_color=colors, node_size=700)
+      else:
+        nx.draw_networkx(g, node_color=colors, node_size=700)
 
 def Show(obj, isDirected=False, textOutput=True, graphicsToScreen=False, 
               graphicsToFile=False, toGraph6=False):
@@ -42,7 +49,7 @@ def Show(obj, isDirected=False, textOutput=True, graphicsToScreen=False,
         plt.clf()
         if graphicsToScreen:
             plt.title(obj.name)
-        DrawColoredGraph(g, weights=True)
+        DrawColoredGraph(g, weights=True, planar=obj.is_planar)
         if graphicsToFile:
             plt.savefig(obj.name)
         if graphicsToScreen:
