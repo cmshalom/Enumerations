@@ -43,7 +43,7 @@ def _node_color(c: Color | NodeColor) -> NodeColor:
 
 
 class Tree:
-    def __init__(self, children:list[Tree], weight:int=1, color: Color | NodeColor = Color.GRAY):
+    def __init__(self, children:list[Any], weight:int=1, color: Color | NodeColor = Color.GRAY):
         assert weight >= 0, f"weight = {weight}. Should be non-negative"
         self.weight = weight
 
@@ -151,7 +151,7 @@ class Tree:
         self._add_to_graph(g, vertexColors, vertexLabels)
         return g, vertexColors, vertexLabels
 
-    def _add_to_graph(self, g: nx.Graph, colors:list[str], labels:list[str], parent:Optional[Tree]=None):
+    def _add_to_graph(self, g: nx.Graph, colors:list[str], labels:list[str], parent=None):
         '''
         :param g: A new vertex and an edge to parent (if any) is added to the graph g
         :param colors: The color of the vertex is added to this list
