@@ -137,34 +137,27 @@ class Tree:
         return str
 
     def plot(self, isDirected=False):
-        g, vertexColors, vertexLabels = self.graph_colors_labels(isDirected)
-        nx.draw_planar(g, with_labels=True, labels=vertexLabels, font_weight='bold', font_size=20,
-                       node_color=vertexColors, node_size=700)
+        g = self.graph(isDirected)
+        colors= [v[1].get('color', 'gray') for v in g.nodes(data=True)]
+        labels= {v[0]: str(v[1].get('weight', 0)) for v in g.nodes(data=True)}
+        nx.draw_planar(g, with_labels=True, labels=labels, font_weight='bold', font_size=20,
+                       node_color=colors, node_size=700)
 
-    def graph(self, isDirected=False):
-        return self.graph_colors_labels(isDirected)[0]
-
-    def graph_colors_labels(self, isDirected=False):
+    def graph(self, isDirected=False) -> nx.Graph:
         g = nx.DiGraph() if isDirected else nx.Graph()
-        vertexColors = []
-        vertexLabels = {}
-        self._add_to_graph(g, vertexColors, vertexLabels)
-        return g, vertexColors, vertexLabels
+        self._add_to_graph(g)
+        return g
 
-    def _add_to_graph(self, g: nx.Graph, colors:list[str], labels:list[str], parent=None):
+    def _add_to_graph(self, g: nx.Graph, parent=None):
         '''
         :param g: A new vertex and an edge to parent (if any) is added to the graph g
-        :param colors: The color of the vertex is added to this list
-        :param labels:  A label encoding the number and weight of the vertex is added to this dictionnary.
         '''
         root = g.number_of_nodes()
-        g.add_node(root)
-        colors.append(self.color.palette_color)
-        labels[root] = f'{self.weight}'
+        g.add_node(root, color=self.color.palette_color, weight=self.weight)
         if parent is not None:
             g.add_edge(parent,root)
         for child in self.children:
-            child._add_to_graph(g, colors, labels, root)
+            child._add_to_graph(g, root)
 
     def show(self, isDirected=False, textOutput=True, graphicsToScreen=False, 
                    graphicsToFile=False, toGraph6=False):
