@@ -1,48 +1,61 @@
 import sys
 import networkx as nx
 import matplotlib.pyplot as plt
-
+from dataclasses import dataclass
+from enum import Enum, IntEnum
+from typing import Any, Optional, Iterable
 
 from bisect import *
 import combin
 import util
 
+''' Numbers must be consecutive starting from zero.
+'''
+class Color(IntEnum):
+  GRAY = 0
+  BLUE = 1
+  YELLOW = 2
+  RED = 3
+
+@dataclass
+class NodeColor():
+  color: Color
+  minVertexWeight: int
+  maxVertexWeight: int
+  minTreeWeight: int
+  childrenColor: Color
+  _palette_color: Optional[str] = None
+
+  @property
+  def palette_color(self) -> str:
+    return self._palette_color if self._palette_color is not None else self.color.name.lower()
+
+# One entry per each vale of Color enum, in the same order
+NODE_COLORS = [
+    NodeColor(Color.GRAY, 1, 1, 1, Color.GRAY),
+    NodeColor(Color.BLUE, 1, sys.maxsize, 1, Color.BLUE),
+    NodeColor(Color.YELLOW, 1, 1, 2, Color.RED),
+    NodeColor(Color.RED, 0, sys.maxsize, 1, Color.YELLOW),
+]
+
+def _node_color(c: Color | NodeColor) -> NodeColor:
+  return c if isinstance(c, NodeColor) else NODE_COLORS[c]
+
+
 class Tree:
-    class Color:
-        GRAY = 0
-        BLUE = 1
-        YELLOW = 2
-        RED = 3
-        def __init__(self, name, minVertexWeight, maxVertexWeight, minTreeWeight, childrenColor):
-            self.name = name
-            self.minVertexWeight = minVertexWeight
-            self.maxVertexWeight = maxVertexWeight
-            self.minTreeWeight = minTreeWeight
-            self.childrenColor = childrenColor
-
-    colors = [Color("gray", 1, 1, 1, Color.GRAY),
-              Color("blue", 1, sys.maxsize, 1, Color.BLUE),
-              Color("yellow", 1, 1, 2, Color.RED),
-              Color("red", 0, sys.maxsize, 1, Color.YELLOW)
-              ]
-
-    def __init__(self, children=None, weight=1, color=Color.GRAY):
-        assert weight >= 0, "weight = %d should be non-negative" % weight
+    def __init__(self, children:list[Tree], weight:int=1, color: Color | NodeColor = Color.GRAY):
+        assert weight >= 0, f"weight = {weight}. Should be non-negative"
         self.weight = weight
 
-        if type(color) == int:
-            assert color <= len(Tree.colors), "Color %d exceeds %d" % (color, len(Tree.colors))
-            color = Tree.colors[color]
-        self.color = color
+        self.color = _node_color(color)
 
-        if children is None:
-            self.children = []
+        self.children = children
+        if not children:
             self.leaves = 1
         else:
-            self.children = children
             self.leaves = sum([child.leaves for child in children])
-        self.vertices = 1 + sum([child.vertices for child in self.children])
-        self.totalWeight = self.weight + sum([child.totalWeight for child in self.children])
+        self.vertices = 1 + sum([child.vertices for child in children])
+        self.totalWeight = self.weight + sum([child.totalWeight for child in children])
 
     def addTree(self, tree):
         '''
@@ -63,7 +76,8 @@ class Tree:
         for child in self.children:
             yield from nodesDFS(child)
 
-    def getName(self):
+    @property
+    def name(self):
         name = "Weight:" + str(self.totalWeight)
         if "rank" in self.__dict__:
             name += "-" + str(self.rank)
@@ -74,7 +88,7 @@ class Tree:
         :return: a string with the number of vertices of the tree and every subtree
         (not recursive)
         '''
-        result = str(self.vertices + "w=" + self.weight)
+        result = str(self.vertices) + "w=" + str(self.weight)
         if len(self.children) > 0:
             result += "->"
             for child in self.children:
@@ -125,7 +139,7 @@ class Tree:
     def plot(self, isDirected=False):
         g, vertexColors, vertexLabels = self.graph_colors_labels(isDirected)
         nx.draw_planar(g, with_labels=True, labels=vertexLabels, font_weight='bold', font_size=20,
-                       node_color=vertexColors,node_size=700)
+                       node_color=vertexColors, node_size=700)
 
     def graph(self, isDirected=False):
         return self.graph_colors_labels(isDirected)[0]
@@ -137,16 +151,16 @@ class Tree:
         self._add_to_graph(g, vertexColors, vertexLabels)
         return g, vertexColors, vertexLabels
 
-    def _add_to_graph(self, g, colors, labels, parent=None):
+    def _add_to_graph(self, g: nx.Graph, colors:list[str], labels:list[str], parent:Optional[Tree]=None):
         '''
         :param g: A new vertex and an edge to parent (if any) is added to the graph g
-        :param colors: The color of the vertex is added to to this list
+        :param colors: The color of the vertex is added to this list
         :param labels:  A label encoding the number and weight of the vertex is added to this dictionnary.
         '''
         root = g.number_of_nodes()
         g.add_node(root)
-        colors.append(self.color.name)
-        labels[root] = "%d" % (self.weight)
+        colors.append(self.color.palette_color)
+        labels[root] = f'{self.weight}'
         if parent is not None:
             g.add_edge(parent,root)
         for child in self.children:
@@ -157,29 +171,29 @@ class Tree:
         '''
         Exhibits self depending on the global boolean variables textOutput, graphicsToScreen and GraphicsToFile
         '''
-        name = self.getName()
         if textOutput:
-            print(name)
+            print(self.name)
             print(self.__repr__())
         if graphicsToScreen or graphicsToFile:
             plt.clf()
             if graphicsToScreen:
-                plt.title(name)
+                plt.title(self.name)
             self.plot(isDirected=isDirected)
             if graphicsToFile:
-                plt.savefig(name)
+                plt.savefig(self.name)
             if graphicsToScreen:
                 plt.show()
         if toGraph6:
-          nx.write_graph6(self.graph(), f"{name}.g6")
+          nx.write_graph6(self.graph(), f"{self.name}.g6")
 
 ###########################################################################################
 #         GENERATORS
 ###########################################################################################
 
-def rootedTrees(w, color, maxSubtreeWeight=None):
-    if type(color) == int:
-        color = Tree.colors[color]
+Forest = list[Tree]
+
+def rootedTrees(w: int, color: Color | NodeColor, maxSubtreeWeight:Optional[int]=None) -> Iterable[Tree]:
+    color = _node_color(color)
     if maxSubtreeWeight is None or maxSubtreeWeight > w:
         maxSubtreeWeight = w
     if w < color.minTreeWeight:
@@ -190,59 +204,55 @@ def rootedTrees(w, color, maxSubtreeWeight=None):
         for f in forestsnm_leq(w - rootWeight, maxSubtreeWeight, color.childrenColor):
             yield Tree(f, color=color, weight=rootWeight)
 
-def forests(w, color):
-    return forestsnm_leq(w, w,color)
+def forests(w: int, color: Color | NodeColor) -> Iterable[Forest]:
+    return forestsnm_leq(w, w, color)
 
-def forestsnm_leq(w,m,color):
+def forestsnm_leq(w:int, m:int, color: Color | NodeColor) -> Iterable[Forest]:
     if w==0:
         yield []
         return
 
-    if type(color) == int:
-        color = Tree.colors[color]
+    color = _node_color(color)
     if m < color.minTreeWeight:
         return
 
-    for mm in range (color.minTreeWeight,m+1):
+    for mm in range (color.minTreeWeight, m+1):
         for mu in range (1, w // mm + 1):
-            yield from forestsnmmu(w,mm,mu,color)
+            yield from forestsnmmu(w, mm, mu, color)
     return
 
-def forestsnmmu(w,m,mu,color):
-    assert type(color) == Tree.Color
-
+def forestsnmmu(w:int, m:int, mu:int, color: Color) -> Iterable[Forest]:
     def f():
-        return rootedTrees(m,color)
+        return rootedTrees(m, color)
 
     for set in combin.Multisets(f, mu):
-        for forest in forestsnm_leq(w-m*mu, min(w-m*mu,m-1), color):
+        for forest in forestsnm_leq(w-m*mu, min(w-m*mu, m-1), color):
             yield set + forest
 
-def freeMonochromaticTrees(n, color):
-    if type(color) == int:
-        color = Tree.colors[color]
+def freeMonochromaticTrees(n:int, color: Color | NodeColor) -> Iterable[Tree]:
+    color = _node_color(color)
 
     # Generate monocentroidal trees
-    yield from rootedTrees(n,color, maxSubtreeWeight=(n-1)//2)
+    yield from rootedTrees(n, color, maxSubtreeWeight=(n-1)//2)
 
     # Generate bicentroidal trees
     if n % 2 == 0:
         for pair in combin.Multisets(lambda : rootedTrees(n//2, color),2):
             yield Tree([pair[0]]+pair[1].children, color=color, weight=pair[1].weight)
 
-def blockTrees(n):
+def blockTrees(n:int) -> Iterable[Tree]:
     # Generate monocentroidal trees
-    yield from rootedTrees(n, Tree.Color.RED, maxSubtreeWeight=(n-1)//2)
-    yield from rootedTrees(n, Tree.Color.YELLOW, maxSubtreeWeight=(n-1)//2)
+    yield from rootedTrees(n, Color.RED, maxSubtreeWeight=(n-1)//2)
+    yield from rootedTrees(n, Color.YELLOW, maxSubtreeWeight=(n-1)//2)
 
     if n % 2 == 0:
         # Generate bicentroidal trees
-        for redTree in rootedTrees(n//2, Tree.Color.RED, maxSubtreeWeight=n // 2 - 1):
-            for yellowTree in rootedTrees(n // 2, Tree.Color.YELLOW):
-                yield Tree([redTree]+yellowTree.children, color=Tree.Color.YELLOW, weight=yellowTree.weight)
+        for redTree in rootedTrees(n//2, Color.RED, maxSubtreeWeight=n // 2 - 1):
+            for yellowTree in rootedTrees(n // 2, Color.YELLOW):
+                yield Tree([redTree]+yellowTree.children, color=Color.YELLOW, weight=yellowTree.weight)
         # Generate tricentroidal trees
-        for pair in combin.Multisets(lambda : rootedTrees(n//2, Tree.Color.YELLOW),2):
-            yield Tree(pair, color=Tree.Color.RED, weight=0)
+        for pair in combin.Multisets(lambda : rootedTrees(n//2, Color.YELLOW),2):
+            yield Tree(pair, color=Color.RED, weight=0)
 
 ###########################################################################################
 #         RECURRENCES
@@ -271,8 +281,8 @@ def numberOfRootedTreesWilf(n):
         _computeNumberOfRootedTreesWilf(n)
     return wtn[n]
 
-def _computeNumbersForWC(w,c):
-    color = Tree.colors[c]
+def _computeNumbersForWC(w:int, c: Color):
+    color = NODE_COLORS[c]
     rtwcm_leq1 = [0]     # 1 dimensional
     fwcm1 = [0]          # 1 dimensional
     fwcmmu1 = [[0]]      # 2 dimensional
@@ -297,7 +307,7 @@ def _computeNumbersForWC(w,c):
 def _computeNumberOfForests(W):
     # To be consistent with the paper, we work with one based lists.
     # So, we prepend a dummy zero'th entry to every list
-    numberOfColors = len(Tree.colors)
+    numberOfColors = len(NODE_COLORS)
     if "rtwc" not in globals():
         global rtwc, rtwcm_leq, fwc, fwcm, fwcm_leq, fwcmmu, fwcmmu_leq
         rtwc = [[0]*numberOfColors]             #2 dimensional (w,c)   rt(0,c)=0
@@ -325,16 +335,14 @@ def _computeNumberOfForests(W):
             fwcmmu[-1].append(results[5])
             fwcmmu_leq[-1].append(results[6])
 
-def numberOfForests(w,c):
-    assert w >= 0, "n=%d should be non-negative" % w
-    assert c >= 0 and c < len(Tree.colors), "color %d out of bounds" % c
+def numberOfForests(w:int, c:Color):
+    assert w >= 0, f"w={w}. Should be non-negative"
     if "rtwc" not in globals() or len(rtwc) <= w:
         _computeNumberOfForests(w)
     return fwc[w][c]
 
-def numberOfRootedTrees(w,c,m=None):
-    assert w > 0, "w = %d should be positive" % w
-    assert c >= 0 and c < len(Tree.colors), "color %d out of bounds" % c
+def numberOfRootedTrees(w:int, c: Color, m=None):
+    assert w > 0, f"w = {w}. Should be positive"
     if "rtwc" not in globals() or len(rtwc) <= w:
         _computeNumberOfForests(w)
     return rtwc[w][c] if m is None else rtwcm_leq[w][c][m]
@@ -343,11 +351,10 @@ def numberOfRootedTrees(w,c,m=None):
 #         UNRANKING
 ###########################################################################################
 
-def rootedTree(w,c,i,m=None):
-    assert c >= 0 and c < len(Tree.colors), "color %d out of bounds" % c
-    color = Tree.colors[c]
-    assert w >= color.minTreeWeight, "w=%d should be at least %d" % (w,color.minTreeWeight)
-    assert i >= 0, "i=%d should be non-negative" % i
+def rootedTree(w:int, c:Color, i:int, m:Optional[int]=None) -> Tree:
+    color = NODE_COLORS[c]
+    assert w >= color.minTreeWeight, f"w={w}. It should be at least {color.minTreeWeight}"
+    assert i >= 0, f"i={i} should be non-negative"
 
     if m is None or m > w:
         m = w
@@ -358,16 +365,15 @@ def rootedTree(w,c,i,m=None):
         i1 -= fwcm_leq[w-r][childColor][min(m,w-r)]
         r += 1
     assert r <= color.maxVertexWeight, "%d exceeded the max vertex weight %d" % (r, color.maxVertexWeight)
-    ret = Tree(None if r == w else forest(w-r, childColor, i1),weight=r,color=color)
+    ret = Tree([] if r == w else forest(w-r, childColor, i1), weight=r, color=color)
     ret.rank = i
     return ret
 
-def forest(w, c, i):
-    assert w >= 0, "n=%d should be non-negative" % w
-    assert c >= 0 and c < len(Tree.colors), "color %d out of bounds" % c
-    assert i >= 0, "i=%d should be non-negative" % i
+def forest(w: int, c: Color, i: int) -> list[Tree]:
+    assert w >= 0, f"w={w}. Should be non-negative"
+    assert i >= 0, f"i={i} should be non-negative"
     if i >= numberOfForests(w,c):
-        print("i=", i,  "should be less than the number of forests", numberOfForests(w,c),  "of weight", w)
+        print("i=", i,  "should be less than the number of forests", numberOfForests(w, c),  "of weight", w)
 
     if w==0:
         return []
@@ -378,7 +384,7 @@ def forest(w, c, i):
     i -= fwcmmu_leq[w][c][m][mu - 1]           #this is the index of the required tree in F(n,m, mu)
     return forestwcmmu(w, c, m, mu, i)
 
-def forestwcmmu(w,c, m, mu,i):
+def forestwcmmu(w:int, c: Color, m:int, mu:int, i:int) -> list[Tree]:
     '''
     :return: The i-th forest of weight w, root colored c and m(F)=m and mu(F)=mu
     '''
@@ -388,24 +394,23 @@ def forestwcmmu(w,c, m, mu,i):
     smallChildren = forest (w - m  * mu, c, i2) # the choice of i2 and the order of the trees guarantees that m(F) <= m-1 for the returned forest F
     return bigChildren + smallChildren
 
-def numberOfMonochromaticFreeTrees(w,c):
-    assert w > 0, "n = %d should be positive" % w
-    assert c >= 0 and c < len(Tree.colors), "color %d out of bounds" % c
-    assert Tree.colors[c].childrenColor == c, Tree.colors[c].name + " is not monochromatic"
-    return _numberOfMonocentroidalMonochromaticTrees(w,c) + _numberOfBicentroidalMonochromaticTrees(w,c)
+def numberOfMonochromaticFreeTrees(w:int, c: Color) -> int:
+    assert w > 0, f"w = {w}. Should be positive"
+    assert NODE_COLORS[c].childrenColor == c, c.name + " is not monochromatic"
+    return _numberOfMonocentroidalMonochromaticTrees(w, c) + _numberOfBicentroidalMonochromaticTrees(w, c)
 
-def _numberOfBicentroidalMonochromaticTrees(w,c):
+def _numberOfBicentroidalMonochromaticTrees(w:int, c:int) -> int:
     return combin.CC(numberOfRootedTrees(w // 2, c, w//2-1), 2) if w % 2 == 0 else 0
 
-def _numberOfMonocentroidalMonochromaticTrees(w,c):
-    numberOfForests(w,c)  # Trigger computation of the f-values  // TODO: Make this cleaner & safer
+def _numberOfMonocentroidalMonochromaticTrees(w:int, c:Color) -> int:
+    numberOfForests(w, c)  # Trigger computation of the f-values  // TODO: Make this cleaner & safer
     return numberOfRootedTrees(w, c, (w - 1) // 2)
 
-def freeMonochromaticTree(w,c,i):
+def freeMonochromaticTree(w:int, c:Color, i:int) -> Tree:
     i1 = i;
-    if w % 2 == 0 and i1 >= _numberOfMonocentroidalMonochromaticTrees(w,c):
+    if w % 2 == 0 and i1 >= _numberOfMonocentroidalMonochromaticTrees(w, c):
         # return bicentroidal tree
-        i1 -= _numberOfMonocentroidalMonochromaticTrees(w,c)
+        i1 -= _numberOfMonocentroidalMonochromaticTrees(w, c)
         pair = [ rootedTree(w//2, c, treeIndex) for treeIndex in combin.Multiset(numberOfRootedTrees(w // 2, c, w//2-1),2,i1) ]
         t = pair[0]
         t.addTree(pair[1])
@@ -415,24 +420,24 @@ def freeMonochromaticTree(w,c,i):
     t.rank = i
     return t
 
-def numberOfBlockTrees(w):
-    assert w > 0, "w = %d should be positive" % w
+def numberOfBlockTrees(w:int) -> int:
+    assert w > 0, f"w = {w}. Should be positive"
     return _numberOfMonocentroidalBlockTrees(w) + _numberOfBicentroidalBlockTrees(w) + _numberOfTricentroidalBlockTrees(w)
 
-def _numberOfMonocentroidalBlockTrees(w):
-    numberOfForests(w,Tree.Color.RED)     # Trigger computation of the f-values  // TODO: Make this cleaner & safer
-    return rtwcm_leq[w][Tree.Color.RED][(w-1)//2] + rtwcm_leq[w][Tree.Color.YELLOW][(w-1)//2]
+def _numberOfMonocentroidalBlockTrees(w:int) -> int:
+    numberOfForests(w, Color.RED)     # Trigger computation of the f-values  // TODO: Make this cleaner & safer
+    return rtwcm_leq[w][Color.RED][(w-1)//2] + rtwcm_leq[w][Color.YELLOW][(w-1)//2]
 
-def _numberOfBicentroidalBlockTrees(w):
-    return numberOfRootedTrees(w // 2, Tree.Color.RED, w//2-1) * numberOfRootedTrees(w//2, Tree.Color.YELLOW, w//2-1) if w % 2 == 0 else 0
+def _numberOfBicentroidalBlockTrees(w:int) -> int:
+    return numberOfRootedTrees(w // 2, Color.RED, w//2-1) * numberOfRootedTrees(w//2, Color.YELLOW, w//2-1) if w % 2 == 0 else 0
 
-def _numberOfTricentroidalBlockTrees(w):
-    return combin.CC(numberOfRootedTrees(w // 2, Tree.Color.YELLOW),2) if w % 2 == 0 else 0
+def _numberOfTricentroidalBlockTrees(w:int) -> int:
+    return combin.CC(numberOfRootedTrees(w // 2, Color.YELLOW), 2) if w % 2 == 0 else 0
 
-def blockTree(w,i):
-    assert w > 0, "n = %d should be positive" % w
+def blockTree(w:int, i:int) -> Tree:
+    assert w > 0, f"w = {w}. Should be positive"
     i1 = i
-    for c in [Tree.Color.RED, Tree.Color.YELLOW]:
+    for c in [Color.RED, Color.YELLOW]:
         if i1 >= rtwcm_leq[w][c][(w-1)//2]:
             i1 -= rtwcm_leq[w][c][(w - 1) // 2]
         else:
@@ -446,16 +451,16 @@ def blockTree(w,i):
         i1 -= _numberOfBicentroidalBlockTrees(w)
     else:
         # Generate a tricentroidal tree
-        (i1,i2) = divmod (i1, numberOfRootedTrees(w // 2,Tree.Color.RED))
-        redTree = rootedTree(w//2, Tree.Color.RED, i2, m=w//2-1)
-        yellowTree = rootedTree(w//2, Tree.Color.YELLOW,i1, m=w//2-1)
-        t = Tree([redTree]+yellowTree.children, color=Tree.Color.YELLOW, weight=yellowTree.weight)
+        (i1,i2) = divmod (i1, numberOfRootedTrees(w // 2,Color.RED))
+        redTree = rootedTree(w//2, Color.RED, i2, m=w//2-1)
+        yellowTree = rootedTree(w//2, Color.YELLOW,i1, m=w//2-1)
+        t = Tree([redTree]+yellowTree.children, color=Color.YELLOW, weight=yellowTree.weight)
         t.rank = i
         return t
 
     # Generate a tricentroidal tree
-    pair = [rootedTree(w // 2, Tree.Color.YELLOW, treeIndex) for treeIndex in
-            combin.Multiset(rtwc[w // 2 - 1][Tree.Color.YELLOW], 2, i1)]
-    t = Tree(pair, color=Tree.Color.RED, weight=0)
+    pair = [rootedTree(w // 2, Color.YELLOW, treeIndex) for treeIndex in
+            combin.Multiset(rtwc[w // 2 - 1][Color.YELLOW], 2, i1)]
+    t = Tree(pair, color=Color.RED, weight=0)
     t.rank = i
     return t
