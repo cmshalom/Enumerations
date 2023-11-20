@@ -38,12 +38,18 @@ def DrawColoredGraph(g: nx.Graph, weights:bool = False, planar:bool=True) -> Non
 def Show(obj, isDirected=False, textOutput=True, graphicsToScreen=False, 
               graphicsToFile=False, toGraph6=False):
     '''
-    Exhibits obj depending on the boolean variables textOutput, graphicsToScreen and graphicsToFile
+    Exhibits obj on one or more destinations
+    Args:
+      The argument toGraph6 may have one of the following values
+      None: No output
+      '': Output to the default file whose name is deduced from the name of the object.
+      str: (except '') Output to file having this name
+      file: An open file that will receive the output. 
     '''
     if textOutput:
         print(obj.name)
         print(obj.__repr__())
-    if graphicsToScreen or graphicsToFile or toGraph6:
+    if graphicsToScreen or graphicsToFile or toGraph6 is not None:
       g = obj if isinstance(obj, nx.Graph) else obj.graph(isDirected=isDirected)
       if graphicsToScreen or graphicsToFile:
         plt.clf()
@@ -54,6 +60,13 @@ def Show(obj, isDirected=False, textOutput=True, graphicsToScreen=False,
             plt.savefig(obj.name)
         if graphicsToScreen:
             plt.show()
-      if toGraph6:
+      if toGraph6 is None:
+        pass
+      elif toGraph6=='':
         nx.write_graph6(g, f"{obj.name}.g6")
+      elif isinstance(toGraph6, str):
+        nx.write_graph6(g, toGraph6)
+      else:
+        toGraph6.write(nx.to_graph6_bytes(g))
+
 
