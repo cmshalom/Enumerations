@@ -63,10 +63,10 @@ def Show(obj, isDirected=False, textOutput=True, graphicsToScreen=False,
       if toGraph6 is None:
         pass
       elif toGraph6=='':
-        nx.write_graph6(g, f"{obj.name}.g6")
+        nx.write_graph6(g, f"{obj.name}.g6", header=False)
       elif isinstance(toGraph6, str):
-        nx.write_graph6(g, toGraph6)
+        nx.write_graph6(g, toGraph6, header=False)
       else:
-        toGraph6.write(nx.to_graph6_bytes(g))
+        toGraph6.write(nx.to_graph6_bytes(g, header=False))
 
 
